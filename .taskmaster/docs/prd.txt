@@ -1,0 +1,116 @@
+<PRD>
+
+### **# Technical Architecture**
+
+#### **System Components**
+*   **FastAPI Application (`api/main.py`)**: The core web server. It defines the API endpoints (`/fetch/start`, `/fetch/status/{job_id}`), handles Pydantic model validation for requests and responses, and orchestrates background tasks.
+*   **Job & Task Logic (`api/logic.py`)**: The service's business logic.
+    *   **Job Store:** A simple, in-memory Python dictionary that acts as a database for job states and results. It is fast but not persistent across server restarts.
+    *   **Job Runner:** The `run_fetching_job` function that executes as a background task. It manages the entire lifecycle of a fetch job, from creating tasks to collecting results.
+    *   **Concurrency Manager:** An `asyncio.Semaphore` that enforces the user-defined `concurrency_limit`, preventing the service from being overwhelmed by too many simultaneous browser instances.
+*   **Browser Engine (`toolkit/browser.py`)**: The `StealthBrowserToolkit` class. This is a decoupled and self-contained module that manages the lifecycle of **Patchright** browser instances, including initialization, navigation, proxy configuration, and resource cleanup for each individual fetch task.
+*   **Structured Logging (`settings/logger.py`)**: A logger configured with **structlog** to output all log events as structured, machine-readable JSON. This is crucial for effective monitoring and debugging in a production environment.
+
+#### **Data Models (`api/models.py`)**
+*   **`FetchRequest`**: Defines the input structure for the `/fetch/start` endpoint, containing a `links` list and an `options` object.
+*   **`FetchOptions`**: A nested Pydantic model that defines user-configurable settings: `proxies` (list of strings), `wait_min`, `wait_max`, and `concurrency_limit`. `headless` is excluded as it is fixed to `True`.
+*   **`JobStatusResponse`**: Defines the immediate response after a job is successfully submitted, containing the `job_id` and the URL to poll for status.
+*   **`FetchResponse`**: Defines the response structure for the `/fetch/status/{job_id}` endpoint, containing the job's current status and a list of results.
+*   **`FetchResult`**: Defines the structure for the outcome of a single URL fetch, including the `url`, `status` (`success` or `error`), `html_content`, and an optional `error_message`.
+
+#### **APIs and Integrations**
+*   **Web Framework**: **FastAPI** is used for its high performance and native async capabilities.
+*   **Browser Automation**: **Patchright** is the exclusive browser engine, chosen for its focus on stealth and bypassing anti-bot measures.
+*   **Data Validation**: **Pydantic** is used for rigorous, type-hinted validation of all API requests and responses.
+*   **Logging**: **structlog** is used for structured, JSON-formatted logging.
+
+#### **Infrastructure Requirements**
+*   **Python 3.13+**
+*   The service must be run in an environment with the **Patchright** browsers installed via the `patchright install` command.
+*   **Future Consideration**: For job persistence, an external **Redis** instance would be required in Phase 2.
+
+### **# Development Roadmap**
+
+#### **Phase 1: Core Foundation (MVP)**
+The goal of the MVP is to deliver a fully functional, asynchronous fetching service that fulfills the core requirements.
+*   **API Endpoints:**
+    *   Implement `POST /fetch/start` endpoint that accepts a `FetchRequest`, validates it, and initiates a background task.
+    *   Implement `GET /fetch/status/{job_id}` endpoint to check job status and retrieve results.
+*   **Job Management:**
+    *   Implement the in-memory dictionary as the job store.
+    *   Implement the `run_fetching_job` function using FastAPI's `BackgroundTasks`.
+*   **Fetching Logic:**
+    *   Integrate the `StealthBrowserToolkit` as the sole fetching engine.
+    *   Implement the `asyncio.Semaphore` to enforce the `concurrency_limit` from the request's `options`.
+    *   Implement random proxy selection from the `proxies` list in the request's `options`.
+*   **Configuration & Logging:**
+    *   Ensure user-configurable `wait_min`, `wait_max`, and `concurrency_limit` are passed correctly to the toolkit.
+    *   Force `headless=True` server-side, ignoring any user input for this parameter.
+    *   Set up `structlog` to output structured JSON logs for all operations.
+
+#### **Phase 2: Production Hardening**
+*   **Persistent State:** Replace the in-memory job store with a **Redis** backend to ensure job state and results survive server restarts.
+*   **Job Management API:** Add a `GET /jobs` endpoint to list recent jobs and their statuses.
+*   **Webhooks:** Implement an optional `webhook_url` in `FetchOptions` to allow the service to proactively notify a client when a job is complete, eliminating the need for polling.
+*   **Improved Error Handling:** Categorize common fetching errors (e.g., `TimeoutError`, `NavigationError`, `CaptchaError`) for more structured error reporting in the `FetchResult`.
+
+#### **Phase 3: Enterprise Features**
+*   **Security:** Implement a simple API key authentication scheme using FastAPI's `Security` dependencies.
+*   **Observability:** Integrate with Prometheus by exposing a `/metrics` endpoint to report on job durations, success/failure rates, and concurrency levels.
+*   **Job Control:** Add a `POST /fetch/cancel/{job_id}` endpoint to allow for the graceful termination of a running job.
+
+### **# Logical Dependency Chain**
+1.  **Foundation First (The "Visible" Part):**
+    *   Set up the FastAPI application with Pydantic models for `FetchRequest` and `FetchResponse`.
+    *   Create the two primary endpoints (`/fetch/start` and `/fetch/status/{job_id}`) with placeholder logic. This immediately provides a "front-end" via the auto-generated `/docs` page that can be tested against.
+
+2.  **Quick Win (Prove Core Functionality):**
+    *   Decouple and integrate the `StealthBrowserToolkit`.
+    *   Implement the logic to fetch a **single URL** directly within the `/fetch/start` endpoint (temporarily, without background tasks). This proves the core scraping capability is working.
+
+3.  **Implement the Async Job Pattern:**
+    *   Introduce the in-memory job store (`jobs` dictionary).
+    *   Move the fetching logic into the `run_fetching_job` function and trigger it with `BackgroundTasks`.
+    *   The `/fetch/start` endpoint now only creates the job and returns the `job_id`.
+    *   The `/fetch/status/{job_id}` endpoint now reads from the job store.
+
+4.  **Build Reliability & Performance Features:**
+    *   Integrate the `asyncio.Semaphore` into `run_fetching_job` to respect the `concurrency_limit`.
+    *   Add the random proxy rotation logic.
+    *   Refine the error handling inside `fetch_single_url_with_semaphore` to ensure failures are caught and reported correctly.
+
+5.  **Finalize & Polish:**
+    *   Implement the `structlog` configuration and ensure all parts of the application use it for structured logging.
+    *   Write comprehensive unit and integration tests for the API and logic.
+
+### **# Risks and Mitigations**
+
+*   **Technical Challenges**
+    *   **High Resource Usage:** Multiple concurrent browser instances are memory and CPU-intensive.
+        *   **Mitigation:** Enforce a strict, user-configurable `concurrency_limit` with a safe maximum (e.g., 20). The code will ensure each browser instance and context is properly closed after use to prevent memory leaks. The service should be deployed on a machine with adequate RAM.
+    *   **Evolving Anti-Bot Measures:** Websites can update their protection, making scraping fail.
+        *   **Mitigation:** The `StealthBrowserToolkit` is designed for this purpose and is a single point of maintenance. It can be updated to counter new measures without changing the API's core logic or its clients.
+
+*   **Figuring out the MVP that we can build upon**
+    *   **Risk:** Trying to build too many features at once could delay a usable version.
+        *   **Mitigation:** The development roadmap is strictly phased. The MVP (Phase 1) is a complete, usable product that solves the core problem. Persistence (Redis), webhooks, and security are treated as distinct, subsequent enhancements.
+
+*   **Resource Constraints**
+    *   **Development Time:** Building browser automation from scratch is complex.
+        *   **Mitigation:** We are reusing a pre-existing, proven `StealthBrowserToolkit`, which drastically reduces development time and focuses effort on the API service layer.
+
+### **# Appendix**
+
+#### **Research Findings**
+*   **Patchright** is the chosen browser automation library for its robust async API and focus on stealth, which is critical for the service's reliability.
+*   **FastAPI** is the standard for modern, high-performance async Python APIs, offering automatic documentation and validation.
+*   An **asynchronous job queue** pattern is the best practice for handling long-running, I/O-bound tasks like web scraping without blocking clients.
+*   **structlog** provides superior, machine-readable logging compared to standard libraries, which is essential for monitoring and debugging asynchronous, distributed services.
+
+#### **Technical Specifications**
+*   Use context7 MCP to fetch documentation for every framework used in project.
+*   The service must be written for **Python 3.13+**.
+*   All code must include type hints and follow PEP 8 standards.
+*   The API will provide interactive documentation at the `/docs` endpoint.
+
+</PRD>

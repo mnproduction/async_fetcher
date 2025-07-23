@@ -1,0 +1,1045 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 16,
+        "title": "Set up FastAPI Application Structure",
+        "description": "Create the initial FastAPI application structure with the main entry point and necessary directories.",
+        "details": "Create the following directory structure:\n- api/\n  - main.py (FastAPI app initialization)\n  - models.py (Pydantic models)\n  - logic.py (Business logic)\n- toolkit/\n  - browser.py (StealthBrowserToolkit)\n- settings/\n  - logger.py (Structured logging)\n\nIn main.py, initialize the FastAPI application with appropriate metadata and CORS settings:\n```python\nfrom fastapi import FastAPI\nfrom fastapi.middleware.cors import CORSMiddleware\n\napp = FastAPI(\n    title=\"Async Web Fetching Service\",\n    description=\"A service for asynchronously fetching web content using stealth browsers\",\n    version=\"1.0.0\"\n)\n\napp.add_middleware(\n    CORSMiddleware,\n    allow_origins=[\"*\"],\n    allow_credentials=True,\n    allow_methods=[\"*\"],\n    allow_headers=[\"*\"],\n)\n\n@app.get(\"/\")\nasync def root():\n    return {\"message\": \"Async Web Fetching Service API\"}\n\nif __name__ == \"__main__\":\n    import uvicorn\n    uvicorn.run(\"api.main:app\", host=\"0.0.0.0\", port=8000, reload=True)\n```\n\nCreate a requirements.txt file with the following dependencies:\n```\nfastapi==0.104.1\nuvicorn==0.24.0\npydantic==2.4.2\nstructlog==23.2.0\npatchright==1.0.0  # Replace with actual version\nasyncio==3.4.3\npython-dotenv==1.0.0\n```",
+        "testStrategy": "Verify the application structure is created correctly by running the FastAPI application and accessing the root endpoint. Ensure the application starts without errors and returns the expected response.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Project Directory Structure",
+            "description": "Set up the initial directory and file structure for the FastAPI application, including api/, toolkit/, settings/, and requirements.txt as specified.",
+            "dependencies": [],
+            "details": "Create the following directories and files: api/main.py, api/models.py, api/logic.py, toolkit/browser.py, settings/logger.py, and requirements.txt. Ensure the structure matches the provided specification and follows best practices for modular FastAPI projects[1][2].\n<info added on 2025-07-23T11:07:53.036Z>\n✅ Successfully created project directory structure:\n\n**Directories Created:**\n- `api/` - API endpoints and models\n- `toolkit/` - Browser automation tools\n- `settings/` - Configuration and logging\n\n**Files Created:**\n- `api/__init__.py` - Package initialization\n- `api/main.py` - FastAPI application entry point (placeholder)\n- `api/models.py` - Pydantic models (placeholder)\n- `api/logic.py` - Business logic and job management (placeholder)\n- `toolkit/__init__.py` - Package initialization\n- `toolkit/browser.py` - StealthBrowserToolkit (placeholder)\n- `settings/__init__.py` - Package initialization\n- `settings/logger.py` - Structured logging configuration (placeholder)\n\nAll placeholder files are ready for implementation in subsequent subtasks. Directory structure matches the PRD specifications and follows Python package conventions.\n</info added on 2025-07-23T11:07:53.036Z>",
+            "status": "done",
+            "testStrategy": "Verify that all specified files and directories exist and match the required structure."
+          },
+          {
+            "id": 2,
+            "title": "Initialize FastAPI Application in main.py",
+            "description": "Implement the FastAPI app initialization in api/main.py with metadata and CORS middleware as described.",
+            "dependencies": [
+              "16.1"
+            ],
+            "details": "In api/main.py, initialize the FastAPI application with the provided title, description, and version. Add CORS middleware to allow all origins, credentials, methods, and headers. Implement the root endpoint returning a JSON message. Include the __main__ block to run the app with uvicorn.\n<info added on 2025-07-23T11:08:24.140Z>\nSuccessfully implemented FastAPI application in api/main.py:\n\n**Implementation Details:**\n- **FastAPI App**: Initialized with title \"Async Web Fetching Service\", description, and version \"1.0.0\"\n- **CORS Middleware**: Added with permissive settings (allow all origins, credentials, methods, headers)\n- **Root Endpoint**: Implemented GET \"/\" returning JSON message\n- **Uvicorn Runner**: Added __main__ block to run server on 0.0.0.0:8000 with reload=True\n\n**Key Features:**\n- Follows FastAPI best practices for app initialization\n- CORS configured for development (allows all origins)\n- Auto-reload enabled for development workflow\n- Ready to serve interactive docs at /docs and /redoc\n</info added on 2025-07-23T11:08:24.140Z>",
+            "status": "done",
+            "testStrategy": "Start the application using 'python api/main.py' or equivalent. Access the root endpoint (/) and verify the expected JSON response is returned."
+          },
+          {
+            "id": 3,
+            "title": "Define Pydantic Models in models.py",
+            "description": "Create api/models.py and define placeholder Pydantic models for future use.",
+            "dependencies": [
+              "16.1"
+            ],
+            "details": "In api/models.py, define at least one example Pydantic model (e.g., a basic FetchRequest or placeholder) to ensure the file is ready for further development and imports.\n<info added on 2025-07-23T11:09:20.126Z>\nSuccessfully implemented Pydantic models in api/models.py with five comprehensive models:\n\n1. FetchOptions: Configures proxies, wait times, and concurrency limits with appropriate validation constraints.\n2. FetchRequest: Main request model containing links array and options configuration.\n3. JobStatusResponse: Returns job_id and status_url after job submission.\n4. FetchResult: Captures individual URL fetch results including status, content, and error information.\n5. FetchResponse: Complete job status response containing an array of FetchResult objects.\n\nAll models include proper field validation using Pydantic Field with constraints (ge, le, min_items), type safety with appropriate Python typing (List, Optional, str, int), comprehensive docstrings, sensible defaults, and validation rules for links (minimum 1 required), wait times (1-30s min, 1-60s max), and concurrency limits (1-20 max). Models were successfully imported in main.py to verify correct implementation and are ready for FastAPI auto-documentation.\n</info added on 2025-07-23T11:09:20.126Z>",
+            "status": "done",
+            "testStrategy": "Import the model in main.py and verify that the application starts without import errors."
+          },
+          {
+            "id": 4,
+            "title": "Implement Structured Logging in logger.py",
+            "description": "Set up structured logging in settings/logger.py using structlog.",
+            "dependencies": [
+              "16.1"
+            ],
+            "details": "In settings/logger.py, configure structlog for structured logging. Provide a get_logger function that can be imported and used throughout the application.\n<info added on 2025-07-23T11:10:13.882Z>\nSuccessfully implemented structured logging in settings/logger.py with the following features:\n\n- **structlog Configuration**: Full setup with JSON output renderer\n- **Processors**: Context vars, log levels, stack info, exception handling, ISO timestamps\n- **Logger Factory**: PrintLoggerFactory for console output\n- **Filtering**: Configurable min_level (currently set to DEBUG=0)\n- **Caching**: cache_logger_on_first_use=True for performance\n\n**Functions Created:**\n1. **setup_logger()**: Main configuration function returning configured logger\n2. **get_logger(name)**: Utility function to get named logger instances\n3. **logger**: Pre-configured global logger instance\n\n**Integration Testing:**\n- Successfully imported in api/main.py\n- Added logging to root endpoint, startup event, and main function\n- Logger outputs structured JSON with contextual fields (endpoint, method, service, host, port)\n- Ready for machine-readable log aggregation and monitoring\n\n**Key Benefits:**\n- Machine-readable JSON format\n- ISO timestamp formatting\n- Context preservation across async calls\n- Production-ready structured logging\n</info added on 2025-07-23T11:10:13.882Z>",
+            "status": "done",
+            "testStrategy": "Import and use the logger in main.py or logic.py, then verify that log messages are output in structured format when the application runs."
+          },
+          {
+            "id": 5,
+            "title": "Specify Project Dependencies in requirements.txt",
+            "description": "List all required dependencies in requirements.txt with exact versions as provided.",
+            "dependencies": [
+              "16.1"
+            ],
+            "details": "Add fastapi==0.104.1, uvicorn==0.24.0, pydantic==2.4.2, structlog==23.2.0, patchright==1.0.0, asyncio==3.4.3, and python-dotenv==1.0.0 to requirements.txt. Ensure the file is formatted correctly for pip installation.\n<info added on 2025-07-23T11:11:03.887Z>\nSuccessfully created requirements.txt with project dependencies:\n\nfastapi==0.104.1\nuvicorn[standard]==0.24.0\npydantic==2.4.2\nstructlog==23.2.0\npatchright==1.52.10\npython-dotenv==1.0.0\n</info added on 2025-07-23T11:11:03.887Z>",
+            "status": "done",
+            "testStrategy": "Run 'pip install -r requirements.txt' in a clean environment and verify that all dependencies install without errors."
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "title": "Implement Pydantic Data Models",
+        "description": "Define the Pydantic models for request and response validation as specified in the PRD.",
+        "details": "Create the models.py file with the following Pydantic models:\n\n```python\nfrom typing import List, Optional, Literal\nfrom pydantic import BaseModel, Field, validator\n\nclass FetchOptions(BaseModel):\n    proxies: List[str] = Field(default_factory=list, description=\"List of proxy URLs to use for fetching\")\n    wait_min: int = Field(default=1, ge=0, description=\"Minimum wait time in seconds between requests\")\n    wait_max: int = Field(default=3, ge=0, description=\"Maximum wait time in seconds between requests\")\n    concurrency_limit: int = Field(default=5, ge=1, le=20, description=\"Maximum number of concurrent browser instances\")\n    \n    @validator('wait_max')\n    def validate_wait_max(cls, v, values):\n        if 'wait_min' in values and v < values['wait_min']:\n            raise ValueError('wait_max must be greater than or equal to wait_min')\n        return v\n\nclass FetchRequest(BaseModel):\n    links: List[str] = Field(..., min_items=1, description=\"List of URLs to fetch\")\n    options: FetchOptions = Field(default_factory=FetchOptions, description=\"Options for the fetching process\")\n\nclass JobStatusResponse(BaseModel):\n    job_id: str = Field(..., description=\"Unique identifier for the job\")\n    status_url: str = Field(..., description=\"URL to check the status of the job\")\n\nclass FetchResult(BaseModel):\n    url: str = Field(..., description=\"The URL that was fetched\")\n    status: Literal[\"success\", \"error\"] = Field(..., description=\"Status of the fetch operation\")\n    html_content: Optional[str] = Field(None, description=\"The HTML content of the page if successful\")\n    error_message: Optional[str] = Field(None, description=\"Error message if the fetch failed\")\n\nclass FetchResponse(BaseModel):\n    job_id: str = Field(..., description=\"Unique identifier for the job\")\n    status: Literal[\"pending\", \"in_progress\", \"completed\", \"failed\"] = Field(..., description=\"Current status of the job\")\n    results: List[FetchResult] = Field(default_factory=list, description=\"List of fetch results\")\n    total_urls: int = Field(..., description=\"Total number of URLs to fetch\")\n    completed_urls: int = Field(..., description=\"Number of URLs that have been processed\")\n```",
+        "testStrategy": "Write unit tests to verify that the Pydantic models correctly validate input data according to the defined constraints. Test edge cases such as empty lists, invalid wait times, and concurrency limits outside the allowed range.",
+        "priority": "high",
+        "dependencies": [
+          16
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design FetchOptions Model",
+            "description": "Define the FetchOptions Pydantic model with fields for proxies, wait_min, wait_max, and concurrency_limit, including field constraints and a custom validator for wait_max.",
+            "dependencies": [],
+            "details": "Implement the FetchOptions class using Pydantic's BaseModel, Field, and validator. Ensure all constraints (e.g., ge, le) are enforced and document each field. Add a validator to ensure wait_max is not less than wait_min.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify correct validation of each field, including edge cases such as negative wait times, concurrency limits outside the allowed range, and wait_max less than wait_min."
+          },
+          {
+            "id": 2,
+            "title": "Define FetchRequest and JobStatusResponse Models",
+            "description": "Implement the FetchRequest model for incoming fetch requests and the JobStatusResponse model for job initiation responses.",
+            "dependencies": [
+              "17.1"
+            ],
+            "details": "Create FetchRequest with a required list of links and an options field using FetchOptions. Implement JobStatusResponse with job_id and status_url fields, ensuring all required constraints and documentation are present.",
+            "status": "pending",
+            "testStrategy": "Test that FetchRequest correctly validates required fields, rejects empty link lists, and accepts valid FetchOptions. Verify JobStatusResponse serialization and required field enforcement."
+          },
+          {
+            "id": 3,
+            "title": "Implement FetchResult Model",
+            "description": "Create the FetchResult model to represent the outcome of a single fetch operation, including status, html_content, and error_message fields.",
+            "dependencies": [
+              "17.2"
+            ],
+            "details": "Define FetchResult with url, status (as a Literal), html_content (optional), and error_message (optional). Ensure proper documentation and type enforcement.",
+            "status": "pending",
+            "testStrategy": "Test that FetchResult enforces allowed status values, accepts or rejects optional fields appropriately, and serializes/deserializes as expected."
+          },
+          {
+            "id": 4,
+            "title": "Develop FetchResponse Model",
+            "description": "Construct the FetchResponse model to encapsulate the overall job status and results, including job_id, status, results, total_urls, and completed_urls.",
+            "dependencies": [
+              "17.3"
+            ],
+            "details": "Implement FetchResponse with all required fields, using a list of FetchResult for results. Enforce allowed status values and document each field.",
+            "status": "pending",
+            "testStrategy": "Write tests to ensure FetchResponse validates the structure and types of nested FetchResult objects, enforces status values, and accurately reflects total and completed URLs."
+          },
+          {
+            "id": 5,
+            "title": "Document and Refactor Models for Maintainability",
+            "description": "Add comprehensive docstrings, field descriptions, and comments to all models. Refactor for clarity and maintainability following Pydantic best practices.",
+            "dependencies": [
+              "17.4"
+            ],
+            "details": "Ensure all models have clear docstrings and field-level descriptions. Refactor code to avoid overcomplication, excessive nesting, or misuse of type annotations. Follow best practices for Pydantic model design and validation.",
+            "status": "pending",
+            "testStrategy": "Review code for readability and maintainability. Confirm that documentation is clear and that models are easy to understand and extend. Optionally, run static analysis tools to check for type annotation issues."
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "title": "Set up Structured Logging with structlog",
+        "description": "Configure structlog to output structured JSON logs for all operations.",
+        "details": "Create the logger.py file in the settings directory with the following configuration:\n\n```python\nimport logging\nimport sys\nimport time\nfrom typing import Any, Dict\n\nimport structlog\n\ndef configure_logging() -> None:\n    \"\"\"Configure structlog for JSON formatted logging\"\"\"\n    logging.basicConfig(format=\"%(message)s\", stream=sys.stdout, level=logging.INFO)\n\n    structlog.configure(\n        processors=[\n            structlog.contextvars.merge_contextvars,\n            structlog.stdlib.filter_by_level,\n            structlog.stdlib.add_logger_name,\n            structlog.stdlib.add_log_level,\n            structlog.stdlib.PositionalArgumentsFormatter(),\n            structlog.processors.TimeStamper(fmt=\"iso\"),\n            structlog.processors.StackInfoRenderer(),\n            structlog.processors.format_exc_info,\n            structlog.processors.UnicodeDecoder(),\n            structlog.processors.JSONRenderer()\n        ],\n        logger_factory=structlog.stdlib.LoggerFactory(),\n        wrapper_class=structlog.stdlib.BoundLogger,\n        cache_logger_on_first_use=True,\n    )\n\ndef get_logger(name: str) -> structlog.stdlib.BoundLogger:\n    \"\"\"Get a structured logger with the given name\"\"\"\n    return structlog.get_logger(name)\n\n# Add context variables for request tracking\ndef log_request_context(request_id: str, user_agent: str = None) -> None:\n    \"\"\"Add request context to all log entries within this context\"\"\"\n    structlog.contextvars.clear_contextvars()\n    structlog.contextvars.bind_contextvars(\n        request_id=request_id,\n        user_agent=user_agent,\n    )\n\n# Initialize logging when the module is imported\nconfigure_logging()\n```\n\nUpdate main.py to use the structured logger:\n\n```python\nfrom settings.logger import get_logger\n\nlogger = get_logger(\"api.main\")\n\n@app.middleware(\"http\")\nasync def log_requests(request, call_next):\n    import uuid\n    request_id = str(uuid.uuid4())\n    from settings.logger import log_request_context\n    log_request_context(request_id, request.headers.get(\"user-agent\"))\n    \n    start_time = time.time()\n    logger.info(\"Request started\", path=request.url.path, method=request.method)\n    \n    response = await call_next(request)\n    \n    process_time = time.time() - start_time\n    logger.info(\n        \"Request completed\",\n        path=request.url.path,\n        method=request.method,\n        status_code=response.status_code,\n        process_time_ms=round(process_time * 1000, 2)\n    )\n    \n    return response\n```",
+        "testStrategy": "Verify that logs are correctly formatted as JSON and contain all expected fields. Test by making sample requests to the API and examining the log output. Ensure that request context variables are properly included in the logs.",
+        "priority": "high",
+        "dependencies": [
+          16
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Install and Verify structlog Dependency",
+            "description": "Ensure structlog is installed in the project environment and verify the installation.",
+            "dependencies": [],
+            "details": "Use pip to install structlog and confirm its availability by importing it in a Python shell or script.",
+            "status": "pending",
+            "testStrategy": "Run 'pip show structlog' and a simple import test to confirm installation."
+          },
+          {
+            "id": 2,
+            "title": "Create logger.py with structlog Configuration",
+            "description": "Implement the logger.py module in the settings directory with structlog configured for JSON output and context variable support.",
+            "dependencies": [
+              "18.1"
+            ],
+            "details": "Write the configure_logging, get_logger, and log_request_context functions as specified, ensuring processors include JSONRenderer and contextvars.",
+            "status": "pending",
+            "testStrategy": "Import logger.py in a test script and verify that logger.info emits JSON-formatted logs with context fields."
+          },
+          {
+            "id": 3,
+            "title": "Integrate Structured Logger into main.py",
+            "description": "Update main.py to use the structured logger for all HTTP request logging, including request context and timing.",
+            "dependencies": [
+              "18.2"
+            ],
+            "details": "Replace any existing logging with get_logger from logger.py, and implement the log_requests middleware to bind request_id and user_agent.",
+            "status": "pending",
+            "testStrategy": "Start the FastAPI app, make sample requests, and confirm that logs are structured JSON with correct context and timing."
+          },
+          {
+            "id": 4,
+            "title": "Validate Structured Logging Output and Context Propagation",
+            "description": "Test that all logs are output as structured JSON and that context variables (request_id, user_agent) are correctly included in each log entry.",
+            "dependencies": [
+              "18.3"
+            ],
+            "details": "Trigger various API endpoints and inspect log output for correct structure and presence of context fields.",
+            "status": "pending",
+            "testStrategy": "Use automated or manual tests to make requests and check that logs contain all expected fields in JSON format."
+          },
+          {
+            "id": 5,
+            "title": "Document Logging Usage and Troubleshooting",
+            "description": "Create documentation describing how to use the structured logger, interpret log output, and troubleshoot common issues.",
+            "dependencies": [
+              "18.4"
+            ],
+            "details": "Write a README section or internal doc covering logger usage patterns, expected log structure, and steps for debugging logging issues.",
+            "status": "pending",
+            "testStrategy": "Review documentation for completeness and clarity; have a team member follow the instructions to verify accuracy."
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "title": "Implement StealthBrowserToolkit Integration",
+        "description": "Create the StealthBrowserToolkit class in the toolkit module to manage browser instances for fetching web content.",
+        "details": "Create the browser.py file in the toolkit directory with the following implementation:\n\n```python\nimport asyncio\nimport random\nfrom typing import Dict, List, Optional, Union\n\nfrom settings.logger import get_logger\n\n# Assuming Patchright is a Python package that provides browser automation\n# If it's a different interface, adjust accordingly\nfrom patchright import Browser, BrowserContext, Page\n\nclass StealthBrowserToolkit:\n    \"\"\"A toolkit for managing stealth browser instances for web scraping.\"\"\"\n    \n    def __init__(self, headless: bool = True):\n        self.headless = headless\n        self.logger = get_logger(\"toolkit.browser\")\n        self._browser: Optional[Browser] = None\n    \n    async def initialize(self) -> None:\n        \"\"\"Initialize the browser instance.\"\"\"\n        if self._browser is None:\n            self.logger.info(\"Initializing browser\", headless=self.headless)\n            # Assuming Patchright has a similar API to Playwright\n            # Adjust based on actual Patchright API\n            self._browser = await Browser.launch(headless=self.headless)\n    \n    async def create_context(self, proxy: Optional[str] = None) -> BrowserContext:\n        \"\"\"Create a new browser context, optionally with a proxy.\"\"\"\n        await self.initialize()\n        \n        context_options = {}\n        if proxy:\n            self.logger.info(\"Using proxy\", proxy=proxy)\n            context_options[\"proxy\"] = {\"server\": proxy}\n        \n        # Add stealth settings to avoid detection\n        context_options.update({\n            \"user_agent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36\",\n            \"viewport\": {\"width\": 1920, \"height\": 1080},\n            \"has_touch\": False,\n            \"is_mobile\": False,\n            \"locale\": \"en-US\",\n            \"timezone_id\": \"America/New_York\",\n        })\n        \n        context = await self._browser.new_context(**context_options)\n        return context\n    \n    async def fetch_url(self, url: str, proxy: Optional[str] = None, wait_time: int = 2) -> Dict[str, Union[str, bool]]:\n        \"\"\"Fetch a URL using a stealth browser and return the HTML content.\"\"\"\n        result = {\n            \"url\": url,\n            \"success\": False,\n            \"html\": None,\n            \"error\": None\n        }\n        \n        context = None\n        page = None\n        \n        try:\n            self.logger.info(\"Fetching URL\", url=url, proxy=proxy)\n            context = await self.create_context(proxy)\n            page = await context.new_page()\n            \n            # Navigate to the URL\n            response = await page.goto(url, wait_until=\"networkidle\")\n            if not response or response.status >= 400:\n                result[\"error\"] = f\"Failed to load page: HTTP {response.status if response else 'unknown'}\"\n                return result\n            \n            # Wait for the page to be fully loaded\n            await asyncio.sleep(wait_time)\n            \n            # Get the HTML content\n            html = await page.content()\n            result[\"html\"] = html\n            result[\"success\"] = True\n            \n            self.logger.info(\"Successfully fetched URL\", url=url, content_length=len(html))\n            return result\n            \n        except Exception as e:\n            error_message = str(e)\n            self.logger.error(\"Error fetching URL\", url=url, error=error_message)\n            result[\"error\"] = error_message\n            return result\n            \n        finally:\n            # Clean up resources\n            if page:\n                await page.close()\n            if context:\n                await context.close()\n    \n    async def close(self) -> None:\n        \"\"\"Close the browser instance and free resources.\"\"\"\n        if self._browser:\n            self.logger.info(\"Closing browser\")\n            await self._browser.close()\n            self._browser = None\n    \n    async def __aenter__(self):\n        await self.initialize()\n        return self\n    \n    async def __aexit__(self, exc_type, exc_val, exc_tb):\n        await self.close()\n```\n\nThis implementation provides a clean interface for creating browser instances, navigating to URLs, and handling cleanup. It's designed to work with the Patchright browser automation library and includes stealth features to avoid detection.",
+        "testStrategy": "Create unit tests that mock the Patchright browser API to verify the toolkit's behavior. Test successful URL fetching, error handling, and resource cleanup. Also, create an integration test that fetches a simple test page to verify the actual browser interaction works correctly.",
+        "priority": "high",
+        "dependencies": [
+          18
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design StealthBrowserToolkit Class Structure",
+            "description": "Define the class interface, required methods, and internal state for StealthBrowserToolkit to manage browser instances and contexts for web scraping.",
+            "dependencies": [],
+            "details": "Specify the class attributes, initialization logic, and method signatures for browser initialization, context creation, URL fetching, and cleanup. Ensure the design supports asynchronous operation and stealth features.",
+            "status": "pending",
+            "testStrategy": "Review the class interface for completeness and alignment with requirements. Use static analysis to verify method signatures and attribute definitions."
+          },
+          {
+            "id": 2,
+            "title": "Implement Browser Initialization and Cleanup",
+            "description": "Develop asynchronous methods to initialize and close the Patchright browser instance, ensuring proper resource management.",
+            "dependencies": [
+              "19.1"
+            ],
+            "details": "Implement the async initialize() method to launch the browser if not already running, and the async close() method to shut down the browser and release resources. Integrate logging for lifecycle events.",
+            "status": "pending",
+            "testStrategy": "Write unit tests that mock the Patchright Browser API to verify that initialization and cleanup occur as expected, including edge cases such as repeated calls."
+          },
+          {
+            "id": 3,
+            "title": "Implement Stealth Context Creation with Proxy Support",
+            "description": "Create an asynchronous method to generate new browser contexts with stealth settings and optional proxy configuration.",
+            "dependencies": [
+              "19.2"
+            ],
+            "details": "Develop the create_context() method to accept proxy parameters, apply stealth options (user agent, viewport, locale, etc.), and instantiate a new browser context. Ensure compatibility with Patchright's API.",
+            "status": "pending",
+            "testStrategy": "Mock context creation and verify that the correct options are passed, including proxy and stealth settings. Test with and without proxy parameters."
+          },
+          {
+            "id": 4,
+            "title": "Implement URL Fetching with Error Handling and Stealth Features",
+            "description": "Develop the fetch_url() method to navigate to a URL using a stealth browser context, handle errors, and return HTML content.",
+            "dependencies": [
+              "19.3"
+            ],
+            "details": "Implement logic to create a context, open a new page, navigate to the target URL, wait for network idle, extract HTML, and handle exceptions. Ensure proper cleanup of page and context resources.",
+            "status": "pending",
+            "testStrategy": "Write unit tests that simulate successful fetches, HTTP errors, and exceptions. Verify that HTML is returned on success and errors are logged and reported correctly."
+          },
+          {
+            "id": 5,
+            "title": "Integrate Asynchronous Context Management and Logging",
+            "description": "Add async context manager methods (__aenter__, __aexit__) and ensure comprehensive logging throughout the toolkit.",
+            "dependencies": [
+              "19.4"
+            ],
+            "details": "Implement __aenter__ and __aexit__ to support async with usage, ensuring browser lifecycle is managed automatically. Integrate logging statements for all major operations and error cases.",
+            "status": "pending",
+            "testStrategy": "Test async context manager usage in sample workflows. Verify that logs are generated for initialization, fetches, errors, and cleanup."
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "title": "Implement In-Memory Job Store",
+        "description": "Create the in-memory job store using a Python dictionary to track job states and results.",
+        "details": "Update the logic.py file to implement the in-memory job store:\n\n```python\nimport asyncio\nimport uuid\nfrom datetime import datetime\nfrom typing import Dict, List, Optional\n\nfrom settings.logger import get_logger\nfrom api.models import FetchRequest, FetchResponse, FetchResult\n\nlogger = get_logger(\"api.logic\")\n\n# In-memory job store\njobs: Dict[str, Dict] = {}\n\ndef create_job(request: FetchRequest) -> str:\n    \"\"\"Create a new job and return its ID.\"\"\"\n    job_id = str(uuid.uuid4())\n    \n    jobs[job_id] = {\n        \"id\": job_id,\n        \"status\": \"pending\",\n        \"created_at\": datetime.utcnow().isoformat(),\n        \"updated_at\": datetime.utcnow().isoformat(),\n        \"request\": request.dict(),\n        \"results\": [],\n        \"total_urls\": len(request.links),\n        \"completed_urls\": 0\n    }\n    \n    logger.info(\"Created new job\", job_id=job_id, total_urls=len(request.links))\n    return job_id\n\ndef get_job_status(job_id: str) -> Optional[FetchResponse]:\n    \"\"\"Get the current status of a job.\"\"\"\n    if job_id not in jobs:\n        return None\n    \n    job = jobs[job_id]\n    \n    return FetchResponse(\n        job_id=job_id,\n        status=job[\"status\"],\n        results=[FetchResult(**result) for result in job[\"results\"]],\n        total_urls=job[\"total_urls\"],\n        completed_urls=job[\"completed_urls\"]\n    )\n\ndef update_job_status(job_id: str, status: str) -> None:\n    \"\"\"Update the status of a job.\"\"\"\n    if job_id in jobs:\n        jobs[job_id][\"status\"] = status\n        jobs[job_id][\"updated_at\"] = datetime.utcnow().isoformat()\n        logger.info(\"Updated job status\", job_id=job_id, status=status)\n\ndef add_job_result(job_id: str, result: Dict) -> None:\n    \"\"\"Add a result to a job and update the completed count.\"\"\"\n    if job_id in jobs:\n        jobs[job_id][\"results\"].append(result)\n        jobs[job_id][\"completed_urls\"] += 1\n        jobs[job_id][\"updated_at\"] = datetime.utcnow().isoformat()\n        \n        # Check if job is complete\n        if jobs[job_id][\"completed_urls\"] >= jobs[job_id][\"total_urls\"]:\n            update_job_status(job_id, \"completed\")\n        \n        logger.info(\n            \"Added job result\", \n            job_id=job_id, \n            url=result[\"url\"], \n            status=result[\"status\"],\n            completed=jobs[job_id][\"completed_urls\"],\n            total=jobs[job_id][\"total_urls\"]\n        )\n```\n\nThis implementation provides functions to create jobs, update their status, add results, and retrieve the current state of a job. The job store is a simple in-memory dictionary that maps job IDs to job data.",
+        "testStrategy": "Write unit tests to verify the job store functions correctly. Test creating jobs, updating their status, adding results, and retrieving job status. Ensure that the job status is correctly updated to 'completed' when all URLs have been processed.",
+        "priority": "high",
+        "dependencies": [
+          17,
+          18
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Job Data Structure",
+            "description": "Define the Python dictionary schema to represent each job, including fields for job ID, status, timestamps, request data, results, and URL counters.",
+            "dependencies": [],
+            "details": "Determine the required keys and value types for the in-memory job store, ensuring compatibility with FetchRequest, FetchResponse, and FetchResult models.",
+            "status": "pending",
+            "testStrategy": "Review the schema for completeness and correctness by comparing it to the requirements and models. Write unit tests to validate that the structure supports all necessary operations."
+          },
+          {
+            "id": 2,
+            "title": "Implement Job Creation Logic",
+            "description": "Develop the function to create a new job entry in the in-memory store, assign a unique job ID, and initialize all required fields.",
+            "dependencies": [
+              "20.1"
+            ],
+            "details": "Use uuid to generate unique job IDs and populate the job dictionary with initial values, including status, timestamps, request data, and counters.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify that jobs are created with correct initial values and unique IDs. Test edge cases such as empty requests."
+          },
+          {
+            "id": 3,
+            "title": "Implement Job Status Retrieval",
+            "description": "Create a function to retrieve the current status and results of a job by its ID, returning a FetchResponse object or None if not found.",
+            "dependencies": [
+              "20.1",
+              "20.2"
+            ],
+            "details": "Ensure the function correctly maps the job dictionary to the FetchResponse model and handles missing job IDs gracefully.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to check retrieval of existing and non-existent jobs, and validate the returned FetchResponse structure."
+          },
+          {
+            "id": 4,
+            "title": "Implement Job Status and Result Updates",
+            "description": "Develop functions to update a job's status and to add results, incrementing completed counters and marking jobs as completed when appropriate.",
+            "dependencies": [
+              "20.1",
+              "20.2",
+              "20.3"
+            ],
+            "details": "Update timestamps and counters as needed. Ensure that adding results triggers status changes when all URLs are processed.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify correct status transitions, result accumulation, and completion logic. Test concurrent updates for thread safety."
+          },
+          {
+            "id": 5,
+            "title": "Integrate Logging and Error Handling",
+            "description": "Add logging for job creation, status updates, and result additions. Implement error handling for invalid operations such as updating non-existent jobs.",
+            "dependencies": [
+              "20.2",
+              "20.3",
+              "20.4"
+            ],
+            "details": "Use the provided logger to record key events and errors. Ensure all functions handle invalid input gracefully and log appropriate messages.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify that logs are generated for all major operations and that errors are handled and logged as expected."
+          }
+        ]
+      },
+      {
+        "id": 21,
+        "title": "Implement Fetch Job Runner with Concurrency Control",
+        "description": "Create the background task runner that processes fetch jobs with controlled concurrency using asyncio.Semaphore.",
+        "details": "Add the following functions to logic.py to implement the job runner with concurrency control:\n\n```python\nimport asyncio\nimport random\nfrom typing import List, Optional\n\nfrom toolkit.browser import StealthBrowserToolkit\n\nasync def fetch_single_url_with_semaphore(\n    url: str,\n    semaphore: asyncio.Semaphore,\n    proxies: List[str],\n    wait_min: int,\n    wait_max: int\n) -> Dict:\n    \"\"\"Fetch a single URL with semaphore-controlled concurrency.\"\"\"\n    async with semaphore:\n        # Select a random proxy if available\n        proxy = random.choice(proxies) if proxies else None\n        \n        # Calculate random wait time within range\n        wait_time = random.randint(wait_min, wait_max)\n        \n        logger.info(\n            \"Fetching URL with semaphore\", \n            url=url, \n            proxy=proxy, \n            wait_time=wait_time\n        )\n        \n        # Use the StealthBrowserToolkit to fetch the URL\n        async with StealthBrowserToolkit(headless=True) as browser:\n            result = await browser.fetch_url(url, proxy, wait_time)\n        \n        # Format the result according to our API model\n        return {\n            \"url\": url,\n            \"status\": \"success\" if result[\"success\"] else \"error\",\n            \"html_content\": result[\"html\"] if result[\"success\"] else None,\n            \"error_message\": result[\"error\"] if not result[\"success\"] else None\n        }\n\nasync def run_fetching_job(job_id: str) -> None:\n    \"\"\"Run a fetching job as a background task.\"\"\"\n    if job_id not in jobs:\n        logger.error(\"Job not found\", job_id=job_id)\n        return\n    \n    # Update job status to in_progress\n    update_job_status(job_id, \"in_progress\")\n    \n    job = jobs[job_id]\n    request_data = job[\"request\"]\n    \n    try:\n        # Extract options from the request\n        links = request_data[\"links\"]\n        options = request_data[\"options\"]\n        \n        proxies = options.get(\"proxies\", [])\n        wait_min = max(0, options.get(\"wait_min\", 1))\n        wait_max = max(wait_min, options.get(\"wait_max\", 3))\n        concurrency_limit = min(20, max(1, options.get(\"concurrency_limit\", 5)))\n        \n        # Create a semaphore to limit concurrency\n        semaphore = asyncio.Semaphore(concurrency_limit)\n        \n        # Create tasks for each URL\n        tasks = [\n            fetch_single_url_with_semaphore(url, semaphore, proxies, wait_min, wait_max)\n            for url in links\n        ]\n        \n        # Process URLs concurrently with controlled concurrency\n        for task in asyncio.as_completed(tasks):\n            try:\n                result = await task\n                add_job_result(job_id, result)\n            except Exception as e:\n                logger.error(\"Error processing URL\", job_id=job_id, error=str(e))\n                # Add a generic error result if we can't determine which URL failed\n                error_result = {\n                    \"url\": \"unknown\",\n                    \"status\": \"error\",\n                    \"html_content\": None,\n                    \"error_message\": f\"Unexpected error: {str(e)}\"\n                }\n                add_job_result(job_id, error_result)\n    \n    except Exception as e:\n        logger.error(\"Error running job\", job_id=job_id, error=str(e))\n        update_job_status(job_id, \"failed\")\n```\n\nThis implementation provides a function to fetch a single URL with semaphore-controlled concurrency and a function to run a fetching job as a background task. The job runner extracts options from the request, creates a semaphore to limit concurrency, and processes URLs concurrently with controlled concurrency.",
+        "testStrategy": "Write unit tests to verify the job runner functions correctly. Test the concurrency control by creating a job with multiple URLs and verifying that the semaphore limits the number of concurrent fetches. Test error handling by simulating failures in the fetch process.",
+        "priority": "high",
+        "dependencies": [
+          19,
+          20
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Concurrency Control Mechanism",
+            "description": "Define and configure the concurrency control mechanism using asyncio.Semaphore to limit the number of concurrent fetch operations.",
+            "dependencies": [],
+            "details": "Determine the appropriate concurrency limit based on job options and initialize an asyncio.Semaphore with this value. Ensure the semaphore is used to guard access to the fetch logic for each URL.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify that the semaphore correctly limits the number of concurrent fetches. Simulate multiple fetch tasks and assert that the concurrency never exceeds the specified limit."
+          },
+          {
+            "id": 2,
+            "title": "Implement Single URL Fetch with Semaphore",
+            "description": "Create an async function to fetch a single URL, ensuring that it acquires and releases the semaphore for concurrency control.",
+            "dependencies": [
+              "21.1"
+            ],
+            "details": "Implement fetch_single_url_with_semaphore to acquire the semaphore, select a random proxy, wait for a random interval, and fetch the URL using StealthBrowserToolkit. Ensure proper error handling and result formatting.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify that the function fetches URLs correctly, respects the semaphore, and handles errors gracefully. Test with and without proxies."
+          },
+          {
+            "id": 3,
+            "title": "Extract and Validate Job Options",
+            "description": "Extract job options such as links, proxies, wait times, and concurrency limit from the job request and validate their values.",
+            "dependencies": [
+              "21.2"
+            ],
+            "details": "Parse the job request to retrieve the list of URLs and options. Validate that wait_min, wait_max, and concurrency_limit are within acceptable ranges. Handle missing or invalid values with defaults or error reporting.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify correct extraction and validation of options, including edge cases for missing or invalid values."
+          },
+          {
+            "id": 4,
+            "title": "Implement Background Fetch Job Runner",
+            "description": "Develop the run_fetching_job function to orchestrate the concurrent fetching of URLs as a background task, updating job status and results.",
+            "dependencies": [
+              "21.3"
+            ],
+            "details": "Create tasks for each URL using fetch_single_url_with_semaphore, process them concurrently with asyncio.as_completed, and update the job's status and results in the job store. Handle exceptions and ensure job status is updated appropriately.",
+            "status": "pending",
+            "testStrategy": "Write integration tests to verify that the job runner processes all URLs, updates job status, and handles errors. Test with various numbers of URLs and concurrency limits."
+          },
+          {
+            "id": 5,
+            "title": "Integrate with In-Memory Job Store",
+            "description": "Connect the job runner logic to the in-memory job store for tracking job states, results, and error handling.",
+            "dependencies": [
+              "21.4"
+            ],
+            "details": "Ensure that job creation, status updates, and result storage interact correctly with the in-memory job store. Handle job not found and job completion scenarios robustly.",
+            "status": "pending",
+            "testStrategy": "Write integration tests to verify that job states and results are correctly stored and updated in the job store throughout the job lifecycle."
+          }
+        ]
+      },
+      {
+        "id": 22,
+        "title": "Implement /fetch/start Endpoint",
+        "description": "Create the POST /fetch/start endpoint that accepts a FetchRequest, validates it, and initiates a background task.",
+        "details": "Update main.py to implement the /fetch/start endpoint:\n\n```python\nfrom fastapi import FastAPI, BackgroundTasks, HTTPException, Request\nfrom fastapi.responses import JSONResponse\n\nfrom api.models import FetchRequest, JobStatusResponse\nfrom api.logic import create_job, run_fetching_job\nfrom settings.logger import get_logger\n\nlogger = get_logger(\"api.endpoints\")\n\n@app.post(\"/fetch/start\", response_model=JobStatusResponse)\nasync def start_fetch(request: FetchRequest, background_tasks: BackgroundTasks):\n    \"\"\"Start a new fetch job.\"\"\"\n    try:\n        # Create a new job\n        job_id = create_job(request)\n        \n        # Schedule the job to run in the background\n        background_tasks.add_task(run_fetching_job, job_id)\n        \n        # Construct the status URL\n        status_url = f\"/fetch/status/{job_id}\"\n        \n        logger.info(\"Started fetch job\", job_id=job_id, url_count=len(request.links))\n        \n        # Return the job ID and status URL\n        return JobStatusResponse(\n            job_id=job_id,\n            status_url=status_url\n        )\n    except Exception as e:\n        logger.error(\"Error starting fetch job\", error=str(e))\n        raise HTTPException(status_code=500, detail=f\"Error starting fetch job: {str(e)}\")\n```\n\nThis implementation creates a new job, schedules it to run in the background, and returns the job ID and status URL to the client.",
+        "testStrategy": "Write integration tests to verify the endpoint correctly accepts valid requests, creates a job, and schedules it to run in the background. Test error handling by submitting invalid requests and verifying that appropriate error responses are returned.",
+        "priority": "high",
+        "dependencies": [
+          21
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define and Validate FetchRequest Model",
+            "description": "Ensure the FetchRequest Pydantic model accurately represents the expected request schema and includes all necessary validation logic.",
+            "dependencies": [],
+            "details": "Review and update the FetchRequest model in api/models.py to enforce required fields, types, and constraints. Add or refine validation methods as needed to reject malformed or incomplete requests.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify that valid requests are accepted and invalid requests (e.g., missing fields, wrong types) are rejected with appropriate error messages."
+          },
+          {
+            "id": 2,
+            "title": "Implement /fetch/start POST Endpoint",
+            "description": "Create the POST /fetch/start endpoint in main.py to accept a FetchRequest, validate it, and handle errors.",
+            "dependencies": [
+              "22.1"
+            ],
+            "details": "Use FastAPI's @app.post decorator to define the endpoint. Accept a FetchRequest object, trigger validation, and handle exceptions by returning HTTP 400 or 422 for validation errors and 500 for unexpected errors.",
+            "status": "pending",
+            "testStrategy": "Write integration tests to confirm the endpoint accepts valid requests, rejects invalid ones, and returns correct HTTP status codes and error messages."
+          },
+          {
+            "id": 3,
+            "title": "Integrate Job Creation Logic",
+            "description": "Invoke the create_job function to register a new fetch job and generate a unique job ID upon receiving a valid request.",
+            "dependencies": [
+              "22.2"
+            ],
+            "details": "Call create_job with the validated FetchRequest. Ensure the job is stored in the in-memory job store with initial status and metadata. Capture and handle any errors from job creation.",
+            "status": "pending",
+            "testStrategy": "Test that each valid request results in a new job with a unique ID and correct initial state in the job store. Simulate job creation failures and verify error handling."
+          },
+          {
+            "id": 4,
+            "title": "Schedule Background Fetching Task",
+            "description": "Use FastAPI's BackgroundTasks to schedule the run_fetching_job function for the newly created job.",
+            "dependencies": [
+              "22.3"
+            ],
+            "details": "Add the run_fetching_job function to the background task queue, passing the job ID. Ensure that background execution does not block the main request and that job status is updated asynchronously.",
+            "status": "pending",
+            "testStrategy": "Write tests to confirm that the background task is scheduled and runs independently. Verify that job status transitions from 'pending' to 'in progress' and eventually to 'completed' or 'failed'."
+          },
+          {
+            "id": 5,
+            "title": "Return Job Status Response",
+            "description": "Construct and return a JobStatusResponse containing the job ID and status URL to the client after job creation and scheduling.",
+            "dependencies": [
+              "22.4"
+            ],
+            "details": "Build the response object with the job_id and a status_url formatted as /fetch/status/{job_id}. Ensure the response model matches the OpenAPI schema and is correctly serialized.",
+            "status": "pending",
+            "testStrategy": "Test that the response includes the correct job ID and status URL for each request. Validate the response structure against the API documentation."
+          }
+        ]
+      },
+      {
+        "id": 23,
+        "title": "Implement /fetch/status/{job_id} Endpoint",
+        "description": "Create the GET /fetch/status/{job_id} endpoint to check job status and retrieve results.",
+        "details": "Update main.py to implement the /fetch/status/{job_id} endpoint:\n\n```python\nfrom fastapi import FastAPI, BackgroundTasks, HTTPException, Path\n\nfrom api.models import FetchResponse\nfrom api.logic import get_job_status\nfrom settings.logger import get_logger\n\nlogger = get_logger(\"api.endpoints\")\n\n@app.get(\"/fetch/status/{job_id}\", response_model=FetchResponse)\nasync def get_fetch_status(job_id: str = Path(..., description=\"The ID of the fetch job\")):\n    \"\"\"Get the status of a fetch job.\"\"\"\n    try:\n        # Get the job status\n        job = get_job_status(job_id)\n        \n        if job is None:\n            logger.warning(\"Job not found\", job_id=job_id)\n            raise HTTPException(status_code=404, detail=f\"Job with ID {job_id} not found\")\n        \n        logger.info(\n            \"Retrieved job status\", \n            job_id=job_id, \n            status=job.status, \n            completed=job.completed_urls,\n            total=job.total_urls\n        )\n        \n        return job\n    except HTTPException:\n        raise\n    except Exception as e:\n        logger.error(\"Error getting job status\", job_id=job_id, error=str(e))\n        raise HTTPException(status_code=500, detail=f\"Error getting job status: {str(e)}\")\n```\n\nThis implementation retrieves the job status and returns it to the client. If the job is not found, it returns a 404 error.",
+        "testStrategy": "Write integration tests to verify the endpoint correctly retrieves job status and returns it to the client. Test error handling by requesting non-existent jobs and verifying that a 404 error is returned.",
+        "priority": "high",
+        "dependencies": [
+          22
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define the FetchResponse Model",
+            "description": "Ensure the FetchResponse Pydantic model accurately represents the job status and result schema returned by the endpoint.",
+            "dependencies": [],
+            "details": "Review and update the FetchResponse model in api/models.py to include all necessary fields such as job_id, status, completed_urls, total_urls, and any result data required by the client.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to validate the FetchResponse model's serialization and required fields."
+          },
+          {
+            "id": 2,
+            "title": "Implement Job Status Retrieval Logic",
+            "description": "Develop or update the get_job_status function to retrieve job status and results from the in-memory job store.",
+            "dependencies": [
+              "23.1"
+            ],
+            "details": "Ensure get_job_status(job_id) correctly fetches the job object, handles missing jobs, and returns all relevant status and result information.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify correct retrieval of job status, handling of missing jobs, and accuracy of returned data."
+          },
+          {
+            "id": 3,
+            "title": "Create the /fetch/status/{job_id} Endpoint",
+            "description": "Implement the FastAPI GET endpoint in main.py to handle status requests for a given job_id.",
+            "dependencies": [
+              "23.2"
+            ],
+            "details": "Add the @app.get('/fetch/status/{job_id}') route, parse the job_id path parameter, call get_job_status, handle 404 and 500 errors, and return a FetchResponse.",
+            "status": "pending",
+            "testStrategy": "Write integration tests to verify the endpoint returns correct status for existing jobs, 404 for missing jobs, and 500 for internal errors."
+          },
+          {
+            "id": 4,
+            "title": "Integrate Logging for Status Retrieval",
+            "description": "Add structured logging to the endpoint for successful retrievals, missing jobs, and errors.",
+            "dependencies": [
+              "23.3"
+            ],
+            "details": "Use the project logger to log job retrieval attempts, warnings for not found jobs, and errors for exceptions, including relevant job_id and error details.",
+            "status": "pending",
+            "testStrategy": "Check log outputs during endpoint requests for correct log levels and messages."
+          },
+          {
+            "id": 5,
+            "title": "Test Endpoint Functionality and Error Handling",
+            "description": "Develop and execute integration tests to ensure the endpoint behaves as expected under various scenarios.",
+            "dependencies": [
+              "23.4"
+            ],
+            "details": "Test the endpoint with valid and invalid job_ids, verify correct status codes and response bodies, and ensure error handling and logging are functioning.",
+            "status": "pending",
+            "testStrategy": "Automate tests to cover successful status retrieval, 404 for non-existent jobs, and 500 for simulated internal errors."
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "title": "Implement Random Proxy Selection",
+        "description": "Enhance the fetching logic to randomly select proxies from the provided list for each request.",
+        "details": "The random proxy selection is already implemented in the `fetch_single_url_with_semaphore` function in task 21, but let's enhance it with better error handling and logging:\n\n```python\nasync def fetch_single_url_with_semaphore(\n    url: str,\n    semaphore: asyncio.Semaphore,\n    proxies: List[str],\n    wait_min: int,\n    wait_max: int,\n    retry_count: int = 1\n) -> Dict:\n    \"\"\"Fetch a single URL with semaphore-controlled concurrency and proxy rotation.\"\"\"\n    async with semaphore:\n        # Try different proxies if retries are needed\n        for attempt in range(retry_count + 1):\n            # Select a random proxy if available\n            proxy = random.choice(proxies) if proxies else None\n            \n            # Calculate random wait time within range\n            wait_time = random.randint(wait_min, wait_max)\n            \n            logger.info(\n                \"Fetching URL with semaphore\", \n                url=url, \n                proxy=proxy, \n                wait_time=wait_time,\n                attempt=attempt + 1,\n                max_attempts=retry_count + 1\n            )\n            \n            try:\n                # Use the StealthBrowserToolkit to fetch the URL\n                async with StealthBrowserToolkit(headless=True) as browser:\n                    result = await browser.fetch_url(url, proxy, wait_time)\n                \n                # If successful or this is the last attempt, return the result\n                if result[\"success\"] or attempt == retry_count:\n                    # Format the result according to our API model\n                    return {\n                        \"url\": url,\n                        \"status\": \"success\" if result[\"success\"] else \"error\",\n                        \"html_content\": result[\"html\"] if result[\"success\"] else None,\n                        \"error_message\": result[\"error\"] if not result[\"success\"] else None\n                    }\n                \n                # If we get here, the fetch failed but we have more retries\n                logger.warning(\n                    \"Fetch failed, retrying with different proxy\", \n                    url=url, \n                    error=result[\"error\"],\n                    attempt=attempt + 1,\n                    max_attempts=retry_count + 1\n                )\n                \n                # Wait before retrying\n                await asyncio.sleep(wait_time)\n            \n            except Exception as e:\n                # If this is the last attempt, raise the exception\n                if attempt == retry_count:\n                    logger.error(\n                        \"All fetch attempts failed\", \n                        url=url, \n                        error=str(e),\n                        attempts=retry_count + 1\n                    )\n                    return {\n                        \"url\": url,\n                        \"status\": \"error\",\n                        \"html_content\": None,\n                        \"error_message\": f\"All fetch attempts failed: {str(e)}\"\n                    }\n                \n                # Otherwise, log and continue to the next attempt\n                logger.warning(\n                    \"Fetch attempt failed, retrying\", \n                    url=url, \n                    error=str(e),\n                    attempt=attempt + 1,\n                    max_attempts=retry_count + 1\n                )\n                \n                # Wait before retrying\n                await asyncio.sleep(wait_time)\n```\n\nUpdate the `run_fetching_job` function to pass the retry count:\n\n```python\nasync def run_fetching_job(job_id: str) -> None:\n    # ... existing code ...\n    \n    # Create tasks for each URL\n    tasks = [\n        fetch_single_url_with_semaphore(url, semaphore, proxies, wait_min, wait_max, retry_count=2)\n        for url in links\n    ]\n    \n    # ... rest of the function ...\n```\n\nThis enhancement adds retry logic with different proxies for each attempt, improving the reliability of the fetching process.",
+        "testStrategy": "Write unit tests to verify that proxies are randomly selected from the provided list. Test the retry logic by simulating failures and verifying that different proxies are used for each attempt. Test edge cases such as an empty proxy list and a single proxy.",
+        "priority": "medium",
+        "dependencies": [
+          21
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Review and Refactor Proxy Selection Logic",
+            "description": "Analyze the current random proxy selection implementation in fetch_single_url_with_semaphore and refactor it for clarity, maintainability, and extensibility.",
+            "dependencies": [],
+            "details": "Ensure the proxy selection uses random.choice for each request and is encapsulated in a dedicated helper function for easier testing and future enhancements.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify that the helper function selects proxies randomly from the provided list, including edge cases with empty or single-item lists."
+          },
+          {
+            "id": 2,
+            "title": "Enhance Error Handling for Proxy Failures",
+            "description": "Improve error handling in the fetch_single_url_with_semaphore function to gracefully manage proxy failures and exceptions.",
+            "dependencies": [
+              "24.1"
+            ],
+            "details": "Implement logic to catch and log exceptions for failed proxy requests, ensuring that errors are clearly reported and do not crash the process.",
+            "status": "pending",
+            "testStrategy": "Simulate proxy failures and verify that errors are logged and handled without terminating the fetch process."
+          },
+          {
+            "id": 3,
+            "title": "Implement Retry Logic with Proxy Rotation",
+            "description": "Add retry logic that attempts to fetch the URL with a different randomly selected proxy on each retry, up to a configurable retry count.",
+            "dependencies": [
+              "24.2"
+            ],
+            "details": "Ensure that each retry uses a new random proxy and that the retry count is configurable via function parameters.",
+            "status": "pending",
+            "testStrategy": "Test that, upon failure, the function retries with different proxies and respects the maximum retry count."
+          },
+          {
+            "id": 4,
+            "title": "Integrate Enhanced Proxy Logic into Job Runner",
+            "description": "Update the run_fetching_job function to utilize the enhanced fetch_single_url_with_semaphore, passing the appropriate retry count and proxy list.",
+            "dependencies": [
+              "24.3"
+            ],
+            "details": "Ensure that the job runner creates tasks with the new retry and proxy logic for each URL in the job.",
+            "status": "pending",
+            "testStrategy": "Write integration tests to verify that jobs use the enhanced proxy logic and that results are correctly aggregated."
+          },
+          {
+            "id": 5,
+            "title": "Improve Logging and Monitoring for Proxy Usage",
+            "description": "Enhance logging to provide detailed information about proxy selection, retries, errors, and successes for each request.",
+            "dependencies": [
+              "24.4"
+            ],
+            "details": "Ensure logs include the selected proxy, wait time, attempt number, and error messages for each fetch attempt.",
+            "status": "pending",
+            "testStrategy": "Review logs during test runs to confirm that all relevant proxy and retry information is captured and formatted for easy monitoring."
+          }
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Implement Error Handling and Categorization",
+        "description": "Enhance error handling to categorize common fetching errors for more structured error reporting.",
+        "details": "Update the StealthBrowserToolkit class to categorize common errors:\n\n```python\nclass FetchError(Exception):\n    \"\"\"Base class for fetch errors.\"\"\"\n    pass\n\nclass TimeoutError(FetchError):\n    \"\"\"Error raised when a fetch operation times out.\"\"\"\n    pass\n\nclass NavigationError(FetchError):\n    \"\"\"Error raised when navigation fails.\"\"\"\n    pass\n\nclass CaptchaError(FetchError):\n    \"\"\"Error raised when a captcha is detected.\"\"\"\n    pass\n\nclass ProxyError(FetchError):\n    \"\"\"Error raised when there's an issue with the proxy.\"\"\"\n    pass\n\nclass StealthBrowserToolkit:\n    # ... existing code ...\n    \n    async def fetch_url(self, url: str, proxy: Optional[str] = None, wait_time: int = 2) -> Dict[str, Union[str, bool]]:\n        \"\"\"Fetch a URL using a stealth browser and return the HTML content.\"\"\"\n        result = {\n            \"url\": url,\n            \"success\": False,\n            \"html\": None,\n            \"error\": None,\n            \"error_type\": None\n        }\n        \n        context = None\n        page = None\n        \n        try:\n            self.logger.info(\"Fetching URL\", url=url, proxy=proxy)\n            context = await self.create_context(proxy)\n            page = await context.new_page()\n            \n            # Set timeout for navigation\n            page.set_default_navigation_timeout(30000)  # 30 seconds\n            \n            # Navigate to the URL\n            try:\n                response = await page.goto(url, wait_until=\"networkidle\")\n            except Exception as e:\n                if \"timeout\" in str(e).lower():\n                    raise TimeoutError(f\"Navigation timed out: {str(e)}\")\n                elif \"proxy\" in str(e).lower():\n                    raise ProxyError(f\"Proxy error: {str(e)}\")\n                else:\n                    raise NavigationError(f\"Navigation failed: {str(e)}\")\n            \n            if not response:\n                raise NavigationError(\"No response received from the server\")\n            \n            if response.status >= 400:\n                raise NavigationError(f\"HTTP error: {response.status}\")\n            \n            # Wait for the page to be fully loaded\n            await asyncio.sleep(wait_time)\n            \n            # Check for common captcha patterns\n            content = await page.content()\n            if any(pattern in content.lower() for pattern in [\"captcha\", \"robot\", \"human verification\"]):\n                raise CaptchaError(\"Captcha detected on the page\")\n            \n            # Get the HTML content\n            result[\"html\"] = content\n            result[\"success\"] = True\n            \n            self.logger.info(\"Successfully fetched URL\", url=url, content_length=len(content))\n            return result\n            \n        except FetchError as e:\n            error_message = str(e)\n            error_type = e.__class__.__name__\n            self.logger.error(\"Fetch error\", url=url, error_type=error_type, error=error_message)\n            result[\"error\"] = error_message\n            result[\"error_type\"] = error_type\n            return result\n            \n        except Exception as e:\n            error_message = str(e)\n            self.logger.error(\"Unexpected error fetching URL\", url=url, error=error_message)\n            result[\"error\"] = error_message\n            result[\"error_type\"] = \"UnexpectedError\"\n            return result\n            \n        finally:\n            # Clean up resources\n            if page:\n                await page.close()\n            if context:\n                await context.close()\n```\n\nUpdate the FetchResult model to include the error type:\n\n```python\nclass FetchResult(BaseModel):\n    url: str = Field(..., description=\"The URL that was fetched\")\n    status: Literal[\"success\", \"error\"] = Field(..., description=\"Status of the fetch operation\")\n    html_content: Optional[str] = Field(None, description=\"The HTML content of the page if successful\")\n    error_message: Optional[str] = Field(None, description=\"Error message if the fetch failed\")\n    error_type: Optional[str] = Field(None, description=\"Type of error if the fetch failed\")\n```\n\nUpdate the fetch_single_url_with_semaphore function to include the error type in the result:\n\n```python\nasync def fetch_single_url_with_semaphore(\n    # ... existing parameters ...\n) -> Dict:\n    # ... existing code ...\n    \n    # Format the result according to our API model\n    return {\n        \"url\": url,\n        \"status\": \"success\" if result[\"success\"] else \"error\",\n        \"html_content\": result[\"html\"] if result[\"success\"] else None,\n        \"error_message\": result[\"error\"] if not result[\"success\"] else None,\n        \"error_type\": result.get(\"error_type\") if not result[\"success\"] else None\n    }\n```\n\nThis enhancement categorizes common fetching errors for more structured error reporting, making it easier to diagnose and handle specific types of failures.",
+        "testStrategy": "Write unit tests to verify that errors are correctly categorized. Test each error type by simulating the corresponding failure scenario and verifying that the correct error type is reported. Test edge cases such as unexpected errors that don't fit into any of the defined categories.",
+        "priority": "medium",
+        "dependencies": [
+          19,
+          21
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define and Document Custom Error Classes",
+            "description": "Create and document custom exception classes (FetchError, TimeoutError, NavigationError, CaptchaError, ProxyError) to represent and categorize common fetching errors in the StealthBrowserToolkit.",
+            "dependencies": [],
+            "details": "Implement a clear exception hierarchy for fetch-related errors, ensuring each error type is well-documented and inherits from a common base class for structured handling.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify that each custom exception can be raised and caught independently, and that their documentation is accessible."
+          },
+          {
+            "id": 2,
+            "title": "Integrate Error Categorization in StealthBrowserToolkit",
+            "description": "Update the fetch_url method in StealthBrowserToolkit to raise the appropriate custom error types based on the nature of the failure (timeout, navigation, captcha, proxy).",
+            "dependencies": [
+              "25.1"
+            ],
+            "details": "Refactor the try-except logic to catch and re-raise specific exceptions, ensuring that each error scenario is mapped to the correct custom error class for precise categorization.",
+            "status": "pending",
+            "testStrategy": "Simulate each error scenario (timeout, navigation failure, captcha, proxy error) and verify that the correct custom exception is raised and logged."
+          },
+          {
+            "id": 3,
+            "title": "Extend FetchResult Model for Error Type Reporting",
+            "description": "Modify the FetchResult Pydantic model to include an error_type field, enabling structured reporting of the categorized error type alongside the error message.",
+            "dependencies": [
+              "25.2"
+            ],
+            "details": "Update the model schema and all relevant documentation to reflect the new error_type field, ensuring backward compatibility and clear API contracts.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to confirm that FetchResult instances correctly serialize and deserialize the error_type field, and that it is populated as expected during error scenarios."
+          },
+          {
+            "id": 4,
+            "title": "Update fetch_single_url_with_semaphore to Propagate Error Types",
+            "description": "Refactor the fetch_single_url_with_semaphore function to include the error_type from the fetch_url result in its returned dictionary, ensuring downstream consumers receive structured error information.",
+            "dependencies": [
+              "25.3"
+            ],
+            "details": "Ensure that the function's return value always includes the error_type field when an error occurs, and update any related documentation or type hints.",
+            "status": "pending",
+            "testStrategy": "Test the function by simulating each error type and verifying that the returned dictionary includes the correct error_type value."
+          },
+          {
+            "id": 5,
+            "title": "Implement and Validate Unit Tests for Error Categorization",
+            "description": "Develop comprehensive unit tests to verify that all error types are correctly categorized, reported, and propagated through the system, including edge cases and unexpected errors.",
+            "dependencies": [
+              "25.4"
+            ],
+            "details": "Write tests that simulate each defined error scenario, as well as unexpected errors, and assert that the correct error_type and error_message are reported in FetchResult and API responses.",
+            "status": "pending",
+            "testStrategy": "Run all tests and ensure 100% coverage for error categorization logic, including negative and edge cases. Review logs to confirm accurate error reporting."
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "title": "Implement Comprehensive Logging",
+        "description": "Enhance logging throughout the application to provide detailed information about the fetching process.",
+        "details": "Update the logging in various parts of the application to provide more detailed information:\n\n1. In the StealthBrowserToolkit class:\n```python\nasync def fetch_url(self, url: str, proxy: Optional[str] = None, wait_time: int = 2) -> Dict[str, Union[str, bool]]:\n    # ... existing code ...\n    \n    try:\n        self.logger.info(\n            \"Starting URL fetch\", \n            url=url, \n            proxy=proxy, \n            wait_time=wait_time,\n            headless=self.headless\n        )\n        \n        # ... navigation code ...\n        \n        self.logger.info(\n            \"Navigation complete\", \n            url=url, \n            status_code=response.status,\n            content_type=response.headers.get(\"content-type\")\n        )\n        \n        # ... rest of the function ...\n    \n    # ... exception handling ...\n```\n\n2. In the run_fetching_job function:\n```python\nasync def run_fetching_job(job_id: str) -> None:\n    # ... existing code ...\n    \n    logger.info(\n        \"Starting fetch job\", \n        job_id=job_id, \n        url_count=len(links),\n        concurrency_limit=concurrency_limit,\n        proxy_count=len(proxies),\n        wait_range=f\"{wait_min}-{wait_max}s\"\n    )\n    \n    # ... rest of the function ...\n    \n    # Add summary logging at the end\n    job = get_job_status(job_id)\n    success_count = sum(1 for result in job.results if result.status == \"success\")\n    error_count = sum(1 for result in job.results if result.status == \"error\")\n    \n    logger.info(\n        \"Fetch job completed\", \n        job_id=job_id, \n        status=job.status,\n        total_urls=job.total_urls,\n        success_count=success_count,\n        error_count=error_count,\n        duration_seconds=(datetime.utcnow() - datetime.fromisoformat(jobs[job_id][\"created_at\"])).total_seconds()\n    )\n```\n\n3. Add request ID tracking in the middleware:\n```python\n@app.middleware(\"http\")\nasync def log_requests(request, call_next):\n    import uuid\n    request_id = str(uuid.uuid4())\n    from settings.logger import log_request_context\n    log_request_context(request_id, request.headers.get(\"user-agent\"))\n    \n    # Add the request ID to the response headers\n    response = await call_next(request)\n    response.headers[\"X-Request-ID\"] = request_id\n    \n    return response\n```\n\n4. Add performance metrics logging:\n```python\nclass PerformanceMetrics:\n    \"\"\"Track performance metrics for the application.\"\"\"\n    \n    def __init__(self):\n        self.fetch_durations = []\n        self.job_durations = []\n    \n    def record_fetch_duration(self, duration_ms: float):\n        self.fetch_durations.append(duration_ms)\n        \n        # Log statistics periodically\n        if len(self.fetch_durations) % 10 == 0:\n            self._log_fetch_stats()\n    \n    def record_job_duration(self, duration_ms: float):\n        self.job_durations.append(duration_ms)\n        self._log_job_stats()\n    \n    def _log_fetch_stats(self):\n        if not self.fetch_durations:\n            return\n            \n        avg_duration = sum(self.fetch_durations) / len(self.fetch_durations)\n        max_duration = max(self.fetch_durations)\n        min_duration = min(self.fetch_durations)\n        \n        logger.info(\n            \"Fetch performance metrics\", \n            avg_duration_ms=round(avg_duration, 2),\n            max_duration_ms=round(max_duration, 2),\n            min_duration_ms=round(min_duration, 2),\n            sample_size=len(self.fetch_durations)\n        )\n    \n    def _log_job_stats(self):\n        if not self.job_durations:\n            return\n            \n        avg_duration = sum(self.job_durations) / len(self.job_durations)\n        max_duration = max(self.job_durations)\n        min_duration = min(self.job_durations)\n        \n        logger.info(\n            \"Job performance metrics\", \n            avg_duration_ms=round(avg_duration, 2),\n            max_duration_ms=round(max_duration, 2),\n            min_duration_ms=round(min_duration, 2),\n            sample_size=len(self.job_durations)\n        )\n\n# Create a singleton instance\nperformance_metrics = PerformanceMetrics()\n```\n\nUpdate the fetch_single_url_with_semaphore function to record fetch durations:\n```python\nasync def fetch_single_url_with_semaphore(\n    # ... existing parameters ...\n) -> Dict:\n    start_time = time.time()\n    \n    # ... existing code ...\n    \n    duration_ms = (time.time() - start_time) * 1000\n    performance_metrics.record_fetch_duration(duration_ms)\n    \n    logger.info(\n        \"URL fetch completed\", \n        url=url, \n        status=\"success\" if result[\"success\"] else \"error\",\n        duration_ms=round(duration_ms, 2)\n    )\n    \n    # ... return result ...\n```\n\nUpdate the run_fetching_job function to record job durations:\n```python\nasync def run_fetching_job(job_id: str) -> None:\n    start_time = time.time()\n    \n    # ... existing code ...\n    \n    duration_ms = (time.time() - start_time) * 1000\n    performance_metrics.record_job_duration(duration_ms)\n```\n\nThis enhancement provides detailed logging throughout the application, making it easier to monitor and debug the fetching process.",
+        "testStrategy": "Verify that logs contain all the expected information by running the application and examining the log output. Test that performance metrics are correctly recorded and logged. Test that request IDs are correctly propagated through the application and included in the response headers.",
+        "priority": "medium",
+        "dependencies": [
+          18,
+          21,
+          22,
+          23
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Centralize and Standardize Logging Configuration",
+            "description": "Create a centralized logging configuration module to ensure consistent log formatting, levels, and handlers across the application.",
+            "dependencies": [],
+            "details": "Implement a logging configuration file (e.g., JSON or YAML) and load it at application startup. Ensure all modules use this configuration by importing the centralized logger. Apply structured logging and consistent timestamp formatting.",
+            "status": "pending",
+            "testStrategy": "Verify that all log messages across modules follow the same format and respect the configured log levels. Change configuration settings and confirm they propagate throughout the application."
+          },
+          {
+            "id": 2,
+            "title": "Enhance Logging in StealthBrowserToolkit",
+            "description": "Update the StealthBrowserToolkit class to provide detailed, structured logs for each URL fetch operation, including parameters and results.",
+            "dependencies": [
+              "26.1"
+            ],
+            "details": "Add logging statements at the start and end of each fetch, including URL, proxy, wait time, headless mode, status code, and content type. Ensure exceptions are logged with full tracebacks.",
+            "status": "pending",
+            "testStrategy": "Run fetch operations and confirm that all relevant details are logged. Simulate errors and verify that exception details are captured in the logs."
+          },
+          {
+            "id": 3,
+            "title": "Implement Request ID Tracking in Middleware",
+            "description": "Add middleware to generate and propagate unique request IDs, logging them with each request and including them in response headers.",
+            "dependencies": [
+              "26.1"
+            ],
+            "details": "Generate a UUID for each incoming HTTP request, log the request ID and user-agent, and add the request ID to the response headers. Ensure all downstream logs include the request ID for traceability.",
+            "status": "pending",
+            "testStrategy": "Send multiple requests and verify that each response contains a unique X-Request-ID header. Check logs to ensure request IDs are consistently present and traceable across log entries."
+          },
+          {
+            "id": 4,
+            "title": "Integrate Performance Metrics Logging",
+            "description": "Implement logging of performance metrics for both individual fetches and overall jobs, including durations and summary statistics.",
+            "dependencies": [
+              "26.1"
+            ],
+            "details": "Track and log fetch and job durations in milliseconds. Periodically log aggregate statistics such as average, max, and min durations for both fetches and jobs.",
+            "status": "pending",
+            "testStrategy": "Trigger multiple fetches and jobs, then verify that performance metrics and summary statistics are logged as expected. Confirm accuracy of logged metrics by comparing with manual timing."
+          },
+          {
+            "id": 5,
+            "title": "Update run_fetching_job and Related Functions for Detailed Job Logging",
+            "description": "Enhance the run_fetching_job function and related logic to log job lifecycle events, including start, completion, and result summaries.",
+            "dependencies": [
+              "26.2",
+              "26.4"
+            ],
+            "details": "Log job start parameters, progress, and completion summaries with counts of successes and errors. Ensure job duration is recorded and logged. Integrate with performance metrics and request ID tracking.",
+            "status": "pending",
+            "testStrategy": "Start and complete fetch jobs, then review logs to confirm that all job events and summaries are present and accurate. Validate that logs include all required contextual information."
+          }
+        ]
+      },
+      {
+        "id": 27,
+        "title": "Implement Input Validation and Sanitization",
+        "description": "Enhance input validation and sanitization to prevent security issues and ensure data quality.",
+        "details": "Update the Pydantic models to include more validation and sanitization:\n\n```python\nfrom typing import List, Optional, Literal\nfrom pydantic import BaseModel, Field, validator, HttpUrl\nimport re\n\nclass FetchOptions(BaseModel):\n    proxies: List[str] = Field(default_factory=list, description=\"List of proxy URLs to use for fetching\")\n    wait_min: int = Field(default=1, ge=0, le=30, description=\"Minimum wait time in seconds between requests\")\n    wait_max: int = Field(default=3, ge=0, le=60, description=\"Maximum wait time in seconds between requests\")\n    concurrency_limit: int = Field(default=5, ge=1, le=20, description=\"Maximum number of concurrent browser instances\")\n    \n    @validator('proxies')\n    def validate_proxies(cls, v):\n        for proxy in v:\n            # Check if proxy has valid format\n            if not re.match(r'^(http|https|socks4|socks5)://[\\w.-]+(:\\d+)?$', proxy):\n                raise ValueError(f'Invalid proxy format: {proxy}')\n        return v\n    \n    @validator('wait_max')\n    def validate_wait_max(cls, v, values):\n        if 'wait_min' in values and v < values['wait_min']:\n            raise ValueError('wait_max must be greater than or equal to wait_min')\n        return v\n\nclass FetchRequest(BaseModel):\n    links: List[str] = Field(..., min_items=1, max_items=1000, description=\"List of URLs to fetch\")\n    options: FetchOptions = Field(default_factory=FetchOptions, description=\"Options for the fetching process\")\n    \n    @validator('links')\n    def validate_links(cls, v):\n        valid_links = []\n        for link in v:\n            try:\n                # Validate URL format\n                if not link.startswith(('http://', 'https://')):\n                    link = 'https://' + link\n                \n                # Use Pydantic's HttpUrl for validation\n                HttpUrl(link)\n                \n                # Additional checks\n                if len(link) > 2000:  # RFC 7230 recommends 8000, but most browsers use 2000\n                    raise ValueError(f'URL too long: {link[:50]}...')\n                \n                valid_links.append(link)\n            except Exception as e:\n                raise ValueError(f'Invalid URL {link}: {str(e)}')\n        \n        return valid_links\n```\n\nUpdate the API endpoints to include additional validation:\n\n```python\nfrom fastapi import FastAPI, BackgroundTasks, HTTPException, Path, Query, Depends\nfrom fastapi.security import APIKeyHeader\n\n# ... existing imports ...\n\n# Rate limiting middleware\n@app.middleware(\"http\")\nasync def rate_limit_middleware(request, call_next):\n    client_ip = request.client.host\n    \n    # Simple in-memory rate limiting\n    # In production, use a proper rate limiting library or Redis\n    if client_ip not in rate_limits:\n        rate_limits[client_ip] = {\n            \"count\": 0,\n            \"reset_at\": time.time() + 60  # 1 minute window\n        }\n    \n    # Reset counter if the window has passed\n    if time.time() > rate_limits[client_ip][\"reset_at\"]:\n        rate_limits[client_ip] = {\n            \"count\": 0,\n            \"reset_at\": time.time() + 60\n        }\n    \n    # Increment counter\n    rate_limits[client_ip][\"count\"] += 1\n    \n    # Check if rate limit exceeded\n    if rate_limits[client_ip][\"count\"] > 100:  # 100 requests per minute\n        return JSONResponse(\n            status_code=429,\n            content={\"detail\": \"Rate limit exceeded. Please try again later.\"}\n        )\n    \n    response = await call_next(request)\n    return response\n\n# Input validation for job_id\ndef validate_job_id(job_id: str = Path(..., description=\"The ID of the fetch job\")):\n    if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', job_id):\n        raise HTTPException(status_code=400, detail=\"Invalid job ID format\")\n    return job_id\n\n@app.post(\"/fetch/start\", response_model=JobStatusResponse)\nasync def start_fetch(request: FetchRequest, background_tasks: BackgroundTasks):\n    # ... existing code ...\n\n@app.get(\"/fetch/status/{job_id}\", response_model=FetchResponse)\nasync def get_fetch_status(job_id: str = Depends(validate_job_id)):\n    # ... existing code ...\n```\n\nThis enhancement adds more validation and sanitization to prevent security issues and ensure data quality. It includes validation for proxy URLs, URL format, and job IDs, as well as rate limiting to prevent abuse.",
+        "testStrategy": "Write unit tests to verify that input validation correctly rejects invalid inputs and accepts valid ones. Test edge cases such as URLs with unusual formats, very long URLs, and invalid proxy formats. Test the rate limiting middleware by simulating multiple requests from the same client and verifying that the rate limit is enforced.",
+        "priority": "high",
+        "dependencies": [
+          17,
+          22,
+          23
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Review and Refine Pydantic Model Field Constraints",
+            "description": "Analyze and update all Pydantic model fields to ensure appropriate type annotations, value ranges, and constraints are applied for each input parameter.",
+            "dependencies": [],
+            "details": "Check that all fields in FetchOptions and FetchRequest use correct types, min/max values, and required/optional status. Ensure that constraints such as min_items, max_items, ge, le, and default values are set according to business logic and security needs.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify that valid data is accepted and invalid data (e.g., out-of-range values, missing required fields) is rejected."
+          },
+          {
+            "id": 2,
+            "title": "Implement and Enhance Custom Validators for Complex Fields",
+            "description": "Develop or improve custom Pydantic validators for fields requiring advanced validation logic, such as proxy URLs, job IDs, and link formats.",
+            "dependencies": [
+              "27.1"
+            ],
+            "details": "Ensure validators check for correct proxy URL schemes, enforce job ID UUID format, and validate/normalize URLs in the links list. Use regular expressions and Pydantic's built-in types (e.g., HttpUrl) where appropriate.",
+            "status": "pending",
+            "testStrategy": "Test validators with a variety of valid and invalid inputs, including edge cases like malformed URLs, unsupported proxy schemes, and incorrect job ID formats."
+          },
+          {
+            "id": 3,
+            "title": "Integrate Input Sanitization Logic",
+            "description": "Add sanitization steps to clean and normalize incoming data before further processing, reducing the risk of injection attacks and ensuring data consistency.",
+            "dependencies": [
+              "27.2"
+            ],
+            "details": "Implement logic to trim whitespace, normalize URL schemes, and reject or escape potentially dangerous characters in user-supplied input. Ensure that sanitized data is used throughout the application.",
+            "status": "pending",
+            "testStrategy": "Write tests to confirm that sanitized inputs are correctly processed and that malicious or malformed data is neutralized or rejected."
+          },
+          {
+            "id": 4,
+            "title": "Update API Endpoints to Enforce Validation and Sanitization",
+            "description": "Modify FastAPI endpoint handlers to ensure all incoming requests are validated and sanitized using the updated Pydantic models and custom validators.",
+            "dependencies": [
+              "27.3"
+            ],
+            "details": "Ensure that endpoints such as /fetch/start and /fetch/status/{job_id} reject invalid or unsanitized input with appropriate error messages. Integrate dependency injection for validation where needed.",
+            "status": "pending",
+            "testStrategy": "Perform integration tests by sending requests with both valid and invalid payloads, verifying that only clean, valid data is accepted and errors are handled gracefully."
+          },
+          {
+            "id": 5,
+            "title": "Implement and Test Rate Limiting Middleware",
+            "description": "Ensure the rate limiting middleware is robust, correctly limits requests per client, and integrates smoothly with the validation and sanitization logic.",
+            "dependencies": [
+              "27.4"
+            ],
+            "details": "Review and enhance the middleware to prevent abuse, ensure accurate tracking of client requests, and provide clear error responses when limits are exceeded. Confirm that rate limiting does not interfere with input validation.",
+            "status": "pending",
+            "testStrategy": "Simulate high-frequency requests from the same client and verify that rate limits are enforced. Test interaction with validation errors to ensure correct status codes and messages are returned."
+          }
+        ]
+      },
+      {
+        "id": 28,
+        "title": "Implement Unit and Integration Tests",
+        "description": "Create comprehensive unit and integration tests for the API and logic.",
+        "details": "Create a tests directory with the following structure:\n\n```\ntests/\n  __init__.py\n  conftest.py  # Pytest fixtures\n  unit/\n    __init__.py\n    test_models.py\n    test_logic.py\n    test_browser.py\n  integration/\n    __init__.py\n    test_api.py\n```\n\nImplement conftest.py with common fixtures:\n\n```python\nimport pytest\nimport asyncio\nfrom fastapi.testclient import TestClient\nfrom api.main import app\nfrom api.logic import jobs, create_job\nfrom api.models import FetchRequest, FetchOptions\n\n@pytest.fixture\ndef test_client():\n    \"\"\"Create a test client for the FastAPI app.\"\"\"\n    return TestClient(app)\n\n@pytest.fixture\ndef sample_fetch_request():\n    \"\"\"Create a sample fetch request.\"\"\"\n    return FetchRequest(\n        links=[\"https://example.com\"],\n        options=FetchOptions(\n            proxies=[\"http://proxy.example.com:8080\"],\n            wait_min=1,\n            wait_max=3,\n            concurrency_limit=5\n        )\n    )\n\n@pytest.fixture\ndef sample_job_id(sample_fetch_request):\n    \"\"\"Create a sample job and return its ID.\"\"\"\n    job_id = create_job(sample_fetch_request)\n    yield job_id\n    # Clean up after the test\n    if job_id in jobs:\n        del jobs[job_id]\n\n@pytest.fixture\ndef event_loop():\n    \"\"\"Create an event loop for async tests.\"\"\"\n    loop = asyncio.get_event_loop_policy().new_event_loop()\n    yield loop\n    loop.close()\n```\n\nImplement unit tests for models:\n\n```python\nimport pytest\nfrom pydantic import ValidationError\nfrom api.models import FetchRequest, FetchOptions, FetchResult\n\ndef test_fetch_options_validation():\n    # Test valid options\n    options = FetchOptions(\n        proxies=[\"http://proxy.example.com:8080\"],\n        wait_min=1,\n        wait_max=3,\n        concurrency_limit=5\n    )\n    assert options.proxies == [\"http://proxy.example.com:8080\"]\n    assert options.wait_min == 1\n    assert options.wait_max == 3\n    assert options.concurrency_limit == 5\n    \n    # Test default values\n    options = FetchOptions()\n    assert options.proxies == []\n    assert options.wait_min == 1\n    assert options.wait_max == 3\n    assert options.concurrency_limit == 5\n    \n    # Test invalid wait_max\n    with pytest.raises(ValidationError):\n        FetchOptions(wait_min=3, wait_max=1)\n    \n    # Test invalid proxy format\n    with pytest.raises(ValidationError):\n        FetchOptions(proxies=[\"invalid-proxy\"])\n\ndef test_fetch_request_validation():\n    # Test valid request\n    request = FetchRequest(\n        links=[\"https://example.com\"],\n        options=FetchOptions()\n    )\n    assert request.links == [\"https://example.com\"]\n    assert isinstance(request.options, FetchOptions)\n    \n    # Test empty links\n    with pytest.raises(ValidationError):\n        FetchRequest(links=[])\n    \n    # Test invalid URL\n    with pytest.raises(ValidationError):\n        FetchRequest(links=[\"not-a-url\"])\n```\n\nImplement unit tests for logic:\n\n```python\nimport pytest\nfrom api.logic import create_job, get_job_status, update_job_status, add_job_result, jobs\n\ndef test_create_job(sample_fetch_request):\n    job_id = create_job(sample_fetch_request)\n    assert job_id in jobs\n    assert jobs[job_id][\"status\"] == \"pending\"\n    assert jobs[job_id][\"total_urls\"] == len(sample_fetch_request.links)\n    assert jobs[job_id][\"completed_urls\"] == 0\n\ndef test_get_job_status(sample_job_id):\n    status = get_job_status(sample_job_id)\n    assert status.job_id == sample_job_id\n    assert status.status == \"pending\"\n    assert status.results == []\n    assert status.total_urls == 1\n    assert status.completed_urls == 0\n    \n    # Test non-existent job\n    assert get_job_status(\"non-existent-id\") is None\n\ndef test_update_job_status(sample_job_id):\n    update_job_status(sample_job_id, \"in_progress\")\n    assert jobs[sample_job_id][\"status\"] == \"in_progress\"\n    \n    status = get_job_status(sample_job_id)\n    assert status.status == \"in_progress\"\n\ndef test_add_job_result(sample_job_id):\n    result = {\n        \"url\": \"https://example.com\",\n        \"status\": \"success\",\n        \"html_content\": \"<html></html>\",\n        \"error_message\": None\n    }\n    \n    add_job_result(sample_job_id, result)\n    assert jobs[sample_job_id][\"completed_urls\"] == 1\n    assert len(jobs[sample_job_id][\"results\"]) == 1\n    assert jobs[sample_job_id][\"results\"][0] == result\n    \n    # Test that job status is updated to completed when all URLs are processed\n    assert jobs[sample_job_id][\"status\"] == \"completed\"\n```\n\nImplement integration tests for the API:\n\n```python\nimport pytest\nfrom fastapi.testclient import TestClient\n\ndef test_start_fetch(test_client, sample_fetch_request):\n    response = test_client.post(\n        \"/fetch/start\",\n        json=sample_fetch_request.dict()\n    )\n    \n    assert response.status_code == 200\n    data = response.json()\n    assert \"job_id\" in data\n    assert \"status_url\" in data\n    assert data[\"status_url\"] == f\"/fetch/status/{data['job_id']}\"\n\ndef test_get_fetch_status(test_client, sample_job_id):\n    response = test_client.get(f\"/fetch/status/{sample_job_id}\")\n    \n    assert response.status_code == 200\n    data = response.json()\n    assert data[\"job_id\"] == sample_job_id\n    assert data[\"status\"] == \"pending\"\n    assert data[\"results\"] == []\n    assert data[\"total_urls\"] == 1\n    assert data[\"completed_urls\"] == 0\n    \n    # Test non-existent job\n    response = test_client.get(\"/fetch/status/00000000-0000-0000-0000-000000000000\")\n    assert response.status_code == 404\n```\n\nAdd a pytest.ini file to configure pytest:\n\n```ini\n[pytest]\npythonpath = .\naddopts = -v --cov=api --cov=toolkit --cov=settings --cov-report=term-missing\ntestpaths = tests\n```\n\nUpdate requirements.txt to include testing dependencies:\n\n```\npytest==7.4.3\npytest-asyncio==0.21.1\npytest-cov==4.1.0\nhttpx==0.25.1\n```\n\nThis implementation provides comprehensive unit and integration tests for the API and logic, ensuring that the application works as expected.",
+        "testStrategy": "Run the tests using pytest and verify that all tests pass. Check the code coverage report to ensure that all critical parts of the application are covered by tests. Test edge cases and error conditions to ensure that the application handles them correctly.",
+        "priority": "high",
+        "dependencies": [
+          17,
+          19,
+          20,
+          21,
+          22,
+          23
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set Up Test Directory Structure and Configuration",
+            "description": "Create the 'tests' directory with the specified subdirectories and files for unit and integration tests. Add a pytest.ini file to configure pytest and update requirements.txt to include all necessary testing dependencies.",
+            "dependencies": [],
+            "details": "Establish the following structure: tests/, tests/__init__.py, tests/conftest.py, tests/unit/__init__.py, tests/unit/test_models.py, tests/unit/test_logic.py, tests/unit/test_browser.py, tests/integration/__init__.py, tests/integration/test_api.py. Add pytest.ini and update requirements.txt with pytest, pytest-asyncio, pytest-cov, and httpx.",
+            "status": "pending",
+            "testStrategy": "Verify that the directory structure matches the specification and that pytest discovers all test files. Ensure all dependencies are installed and pytest runs without import errors."
+          },
+          {
+            "id": 2,
+            "title": "Implement Common Pytest Fixtures",
+            "description": "Develop the conftest.py file to provide reusable pytest fixtures for the test client, sample requests, job creation, and event loop management.",
+            "dependencies": [
+              "28.1"
+            ],
+            "details": "Write fixtures for FastAPI TestClient, sample FetchRequest, sample job ID creation and cleanup, and event loop setup for async tests. Ensure fixtures are reusable and isolated for clean test environments.",
+            "status": "pending",
+            "testStrategy": "Run sample tests using these fixtures to confirm they provide the expected objects and teardown correctly after each test."
+          },
+          {
+            "id": 3,
+            "title": "Write Unit Tests for Models and Logic",
+            "description": "Create comprehensive unit tests for the API's data models and core logic, covering validation, job creation, status updates, and result handling.",
+            "dependencies": [
+              "28.2"
+            ],
+            "details": "Implement test_models.py to validate FetchOptions and FetchRequest, including edge cases and error conditions. Implement test_logic.py to test job creation, status retrieval, status updates, and result addition, ensuring correct state transitions and error handling.",
+            "status": "pending",
+            "testStrategy": "Run all unit tests and verify they pass, including tests for invalid input and edge cases. Check code coverage to ensure all model and logic code paths are exercised."
+          },
+          {
+            "id": 4,
+            "title": "Develop Integration Tests for API Endpoints",
+            "description": "Write integration tests for the /fetch/start and /fetch/status/{job_id} endpoints to verify end-to-end API behavior, including job creation, status retrieval, and error handling.",
+            "dependencies": [
+              "28.3"
+            ],
+            "details": "Implement test_api.py to test POST /fetch/start with valid and invalid requests, and GET /fetch/status/{job_id} for existing and non-existent jobs. Validate response structure, status codes, and error responses.",
+            "status": "pending",
+            "testStrategy": "Execute integration tests and confirm correct API responses for all scenarios. Ensure that the endpoints handle both success and error cases as specified."
+          },
+          {
+            "id": 5,
+            "title": "Verify Test Coverage and Edge Case Handling",
+            "description": "Run the complete test suite, review the coverage report, and add or refine tests to ensure all critical code paths, edge cases, and error conditions are covered.",
+            "dependencies": [
+              "28.4"
+            ],
+            "details": "Use pytest with coverage reporting to identify untested code. Add tests for uncovered branches, edge cases, and error scenarios in both unit and integration tests. Refactor tests for clarity and maintainability as needed.",
+            "status": "pending",
+            "testStrategy": "Generate a coverage report and confirm that all critical modules and functions are covered. Ensure that tests for edge cases and error handling pass and that the application behaves as expected under all tested conditions."
+          }
+        ]
+      },
+      {
+        "id": 29,
+        "title": "Implement Documentation and API Swagger UI",
+        "description": "Enhance the API documentation with detailed descriptions and examples using FastAPI's built-in Swagger UI.",
+        "details": "Update the FastAPI application initialization in main.py to include detailed documentation:\n\n```python\nfrom fastapi import FastAPI, BackgroundTasks, HTTPException, Path, Query, Depends\nfrom fastapi.middleware.cors import CORSMiddleware\nfrom fastapi.openapi.utils import get_openapi\n\napp = FastAPI(\n    title=\"Async Web Fetching Service\",\n    description=\"\"\"A service for asynchronously fetching web content using stealth browsers.\n    \n    ## Features\n    \n    - Asynchronous fetching of multiple URLs\n    - Configurable concurrency limits\n    - Proxy rotation\n    - Detailed error reporting\n    - Job status tracking\n    \n    ## Usage\n    \n    1. Submit a fetch job using the `/fetch/start` endpoint\n    2. Check the job status using the `/fetch/status/{job_id}` endpoint\n    \"\"\",\n    version=\"1.0.0\",\n    docs_url=\"/docs\",\n    redoc_url=\"/redoc\"\n)\n\n# Customize OpenAPI schema\ndef custom_openapi():\n    if app.openapi_schema:\n        return app.openapi_schema\n    \n    openapi_schema = get_openapi(\n        title=app.title,\n        version=app.version,\n        description=app.description,\n        routes=app.routes,\n    )\n    \n    # Add examples\n    openapi_schema[\"components\"][\"schemas\"][\"FetchRequest\"][\"example\"] = {\n        \"links\": [\"https://example.com\", \"https://example.org\"],\n        \"options\": {\n            \"proxies\": [\"http://proxy1.example.com:8080\", \"http://proxy2.example.com:8080\"],\n            \"wait_min\": 1,\n            \"wait_max\": 3,\n            \"concurrency_limit\": 5\n        }\n    }\n    \n    openapi_schema[\"components\"][\"schemas\"][\"JobStatusResponse\"][\"example\"] = {\n        \"job_id\": \"123e4567-e89b-12d3-a456-426614174000\",\n        \"status_url\": \"/fetch/status/123e4567-e89b-12d3-a456-426614174000\"\n    }\n    \n    openapi_schema[\"components\"][\"schemas\"][\"FetchResponse\"][\"example\"] = {\n        \"job_id\": \"123e4567-e89b-12d3-a456-426614174000\",\n        \"status\": \"completed\",\n        \"results\": [\n            {\n                \"url\": \"https://example.com\",\n                \"status\": \"success\",\n                \"html_content\": \"<html><body>Example content</body></html>\",\n                \"error_message\": None,\n                \"error_type\": None\n            },\n            {\n                \"url\": \"https://example.org\",\n                \"status\": \"error\",\n                \"html_content\": None,\n                \"error_message\": \"Navigation failed: HTTP 404\",\n                \"error_type\": \"NavigationError\"\n            }\n        ],\n        \"total_urls\": 2,\n        \"completed_urls\": 2\n    }\n    \n    app.openapi_schema = openapi_schema\n    return app.openapi_schema\n\napp.openapi = custom_openapi\n```\n\nUpdate the endpoint handlers to include detailed documentation:\n\n```python\n@app.post(\n    \"/fetch/start\", \n    response_model=JobStatusResponse,\n    summary=\"Start a new fetch job\",\n    description=\"\"\"Submit a list of URLs to be fetched asynchronously.\n    \n    The job will be processed in the background, and you can check its status using the returned job ID.\n    \n    - **links**: A list of URLs to fetch. Each URL must be a valid HTTP or HTTPS URL.\n    - **options**: Optional configuration for the fetching process:\n      - **proxies**: A list of proxy URLs to use for fetching. If provided, a random proxy will be selected for each request.\n      - **wait_min**: Minimum wait time in seconds between requests (default: 1).\n      - **wait_max**: Maximum wait time in seconds between requests (default: 3).\n      - **concurrency_limit**: Maximum number of concurrent browser instances (default: 5, max: 20).\n    \"\"\",\n    response_description=\"Returns the job ID and a URL to check the job status.\"\n)\nasync def start_fetch(request: FetchRequest, background_tasks: BackgroundTasks):\n    # ... existing code ...\n\n@app.get(\n    \"/fetch/status/{job_id}\", \n    response_model=FetchResponse,\n    summary=\"Get the status of a fetch job\",\n    description=\"\"\"Check the status of a previously submitted fetch job.\n    \n    Returns the current status of the job and any results that are available.\n    \n    - **job_id**: The ID of the fetch job, as returned by the `/fetch/start` endpoint.\n    \n    Possible status values:\n    - **pending**: The job has been created but has not started processing yet.\n    - **in_progress**: The job is currently being processed.\n    - **completed**: The job has finished processing all URLs.\n    - **failed**: The job encountered an error and could not be completed.\n    \"\"\",\n    response_description=\"Returns the job status and any available results.\"\n)\nasync def get_fetch_status(job_id: str = Depends(validate_job_id)):\n    # ... existing code ...\n```\n\nAdd a README.md file to the project root with usage instructions:\n\n```markdown\n# Async Web Fetching Service\n\nA service for asynchronously fetching web content using stealth browsers.\n\n## Features\n\n- Asynchronous fetching of multiple URLs\n- Configurable concurrency limits\n- Proxy rotation\n- Detailed error reporting\n- Job status tracking\n\n## Requirements\n\n- Python 3.13+\n- Patchright browser installed via `patchright install`\n\n## Installation\n\n```bash\n# Clone the repository\ngit clone https://github.com/yourusername/async-web-fetcher.git\ncd async-web-fetcher\n\n# Create a virtual environment\npython -m venv venv\nsource venv/bin/activate  # On Windows: venv\\Scripts\\activate\n\n# Install dependencies\npip install -r requirements.txt\n\n# Install Patchright browser\npatchright install\n```\n\n## Usage\n\n```bash\n# Start the server\nuvicorn api.main:app --host 0.0.0.0 --port 8000 --reload\n```\n\nThe API will be available at http://localhost:8000.\n\n### API Documentation\n\nInteractive API documentation is available at http://localhost:8000/docs.\n\n### Example Usage\n\n```python\nimport requests\nimport time\n\n# Start a fetch job\nresponse = requests.post(\n    \"http://localhost:8000/fetch/start\",\n    json={\n        \"links\": [\"https://example.com\", \"https://example.org\"],\n        \"options\": {\n            \"proxies\": [\"http://proxy1.example.com:8080\", \"http://proxy2.example.com:8080\"],\n            \"wait_min\": 1,\n            \"wait_max\": 3,\n            \"concurrency_limit\": 5\n        }\n    }\n)\n\njob_data = response.json()\njob_id = job_data[\"job_id\"]\nstatus_url = job_data[\"status_url\"]\n\nprint(f\"Job ID: {job_id}\")\nprint(f\"Status URL: {status_url}\")\n\n# Poll for job status\nwhile True:\n    response = requests.get(f\"http://localhost:8000{status_url}\")\n    status_data = response.json()\n    \n    print(f\"Status: {status_data['status']}\")\n    print(f\"Completed: {status_data['completed_urls']}/{status_data['total_urls']}\")\n    \n    if status_data[\"status\"] in [\"completed\", \"failed\"]:\n        break\n    \n    time.sleep(1)\n\n# Print results\nfor result in status_data[\"results\"]:\n    print(f\"URL: {result['url']}\")\n    print(f\"Status: {result['status']}\")\n    if result[\"status\"] == \"success\":\n        print(f\"Content length: {len(result['html_content'])}\")\n    else:\n        print(f\"Error: {result['error_message']}\")\n    print()\n```\n\n## Running Tests\n\n```bash\npytest\n```\n\n## License\n\nMIT\n```\n\nThis implementation enhances the API documentation with detailed descriptions and examples using FastAPI's built-in Swagger UI, making it easier for users to understand and use the API.",
+        "testStrategy": "Verify that the Swagger UI is correctly generated and includes all the expected documentation. Test that the examples are correctly displayed and that the API can be tested directly from the Swagger UI. Verify that the README.md file contains accurate and helpful information.",
+        "priority": "medium",
+        "dependencies": [
+          16,
+          17,
+          22,
+          23
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define and Enhance API Metadata in FastAPI Initialization",
+            "description": "Update the FastAPI application initialization in main.py to include a comprehensive title, description, and version, and configure Swagger UI parameters for optimal documentation presentation.",
+            "dependencies": [],
+            "details": "Set the FastAPI app's title, description (with markdown for features and usage), and version. Configure Swagger UI parameters as needed (e.g., deepLinking, doc expansion) to improve the developer experience.",
+            "status": "pending",
+            "testStrategy": "Start the FastAPI server and verify that the Swagger UI at /docs displays the updated metadata and configuration."
+          },
+          {
+            "id": 2,
+            "title": "Customize OpenAPI Schema with Detailed Examples",
+            "description": "Implement a custom OpenAPI schema function to inject detailed request and response examples for all relevant models, ensuring clarity in the Swagger UI.",
+            "dependencies": [
+              "29.1"
+            ],
+            "details": "Create or update a custom_openapi function that adds example objects for FetchRequest, JobStatusResponse, and FetchResponse schemas. Assign this function to app.openapi.",
+            "status": "pending",
+            "testStrategy": "Check that the Swagger UI displays the provided examples for each schema and that they match the intended structure and content."
+          },
+          {
+            "id": 3,
+            "title": "Document Endpoint Handlers with Summaries, Descriptions, and Response Details",
+            "description": "Update all endpoint decorators to include detailed summaries, descriptions, and response descriptions, covering parameters, expected behavior, and possible status values.",
+            "dependencies": [
+              "29.2"
+            ],
+            "details": "For each endpoint (e.g., /fetch/start, /fetch/status/{job_id}), provide a summary, a markdown-formatted description explaining parameters and usage, and a response_description. Ensure all relevant information is visible in the Swagger UI.",
+            "status": "pending",
+            "testStrategy": "Open the Swagger UI and verify that each endpoint displays the correct summary, description, and response details, and that users can understand how to use the API."
+          },
+          {
+            "id": 4,
+            "title": "Verify and Test Interactive API Documentation Functionality",
+            "description": "Ensure that the Swagger UI is fully functional, displays all enhanced documentation, and allows users to interactively test the API endpoints with example payloads.",
+            "dependencies": [
+              "29.3"
+            ],
+            "details": "Manually test the Swagger UI by submitting example requests, reviewing example responses, and confirming that all documentation elements are rendered as intended.",
+            "status": "pending",
+            "testStrategy": "Use the Swagger UI to execute sample requests for each endpoint, verify that the documentation matches the actual API behavior, and confirm that example payloads are accepted and produce expected results."
+          },
+          {
+            "id": 5,
+            "title": "Create and Update README.md with Usage and Documentation Instructions",
+            "description": "Write or update the project's README.md to include installation steps, usage instructions, API documentation access details, and example code for interacting with the API.",
+            "dependencies": [
+              "29.4"
+            ],
+            "details": "Ensure the README.md covers project features, requirements, installation, running the server, accessing Swagger UI, example API usage, and testing instructions.",
+            "status": "pending",
+            "testStrategy": "Review the README.md for completeness and clarity. Follow the instructions to verify that a new user can set up, run, and use the API as described."
+          }
+        ]
+      },
+      {
+        "id": 30,
+        "title": "Implement Docker Deployment",
+        "description": "Create Docker configuration for easy deployment of the service.",
+        "details": "Create a Dockerfile in the project root:\n\n```dockerfile\n# Use Python 3.13 as the base image\nFROM python:3.13-slim\n\n# Set working directory\nWORKDIR /app\n\n# Install system dependencies\nRUN apt-get update && apt-get install -y \\\n    wget \\\n    gnupg \\\n    && rm -rf /var/lib/apt/lists/*\n\n# Install Patchright (assuming it's a package that can be installed via pip)\n# If it requires a different installation method, adjust accordingly\nRUN pip install patchright\nRUN patchright install\n\n# Copy requirements and install Python dependencies\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\n\n# Copy the application code\nCOPY . .\n\n# Expose the port the app runs on\nEXPOSE 8000\n\n# Command to run the application\nCMD [\"uvicorn\", \"api.main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\"]\n```\n\nCreate a docker-compose.yml file for local development:\n\n```yaml\nversion: '3'\n\nservices:\n  api:\n    build: .\n    ports:\n      - \"8000:8000\"\n    volumes:\n      - .:/app\n    environment:\n      - PYTHONPATH=/app\n      - LOG_LEVEL=INFO\n    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload\n\n  # For Phase 2: Add Redis for job persistence\n  # redis:\n  #   image: redis:7-alpine\n  #   ports:\n  #     - \"6379:6379\"\n  #   volumes:\n  #     - redis-data:/data\n\n# volumes:\n#   redis-data:\n```\n\nCreate a .dockerignore file to exclude unnecessary files:\n\n```\n.git\n.gitignore\n.env\n.venv\nvenv\nenv\n__pycache__\n*.pyc\n*.pyo\n*.pyd\n.Python\n.pytest_cache\n.coverage\nhtmlcov\n.DS_Store\n```\n\nUpdate the README.md file with Docker deployment instructions:\n\n```markdown\n## Docker Deployment\n\n### Using Docker Compose (Recommended for Development)\n\n```bash\n# Build and start the services\ndocker-compose up -d\n\n# View logs\ndocker-compose logs -f\n\n# Stop the services\ndocker-compose down\n```\n\n### Using Docker Directly\n\n```bash\n# Build the Docker image\ndocker build -t async-web-fetcher .\n\n# Run the container\ndocker run -p 8000:8000 async-web-fetcher\n```\n\nThe API will be available at http://localhost:8000.\n```\n\nCreate a simple health check endpoint in main.py:\n\n```python\n@app.get(\n    \"/health\", \n    summary=\"Health check endpoint\",\n    description=\"Returns the health status of the service.\",\n    response_description=\"Returns a simple health status message.\"\n)\nasync def health_check():\n    return {\"status\": \"healthy\", \"version\": app.version}\n```\n\nThis implementation provides Docker configuration for easy deployment of the service, including a Dockerfile, docker-compose.yml file, and .dockerignore file. It also adds a simple health check endpoint for monitoring the service.",
+        "testStrategy": "Build the Docker image and run the container to verify that the service starts correctly and is accessible. Test the health check endpoint to verify that it returns the expected response. Test the Docker Compose configuration by starting the services and verifying that they work together correctly.",
+        "priority": "medium",
+        "dependencies": [
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Dockerfile for Service Deployment",
+            "description": "Develop a Dockerfile in the project root that defines the build and runtime environment for the service, including base image selection, dependency installation, application code copying, port exposure, and the default command.",
+            "dependencies": [],
+            "details": "Ensure the Dockerfile uses an appropriate Python base image, installs all required system and Python dependencies, copies the application code, exposes the necessary port, and specifies the command to run the service. Follow Dockerfile best practices such as minimizing image size and using .dockerignore to exclude unnecessary files.",
+            "status": "pending",
+            "testStrategy": "Build the Docker image and run the container to verify that the service starts correctly and is accessible on the expected port."
+          },
+          {
+            "id": 2,
+            "title": "Create docker-compose.yml for Local Development",
+            "description": "Write a docker-compose.yml file to orchestrate the service and its dependencies for local development, enabling easy startup, shutdown, and configuration.",
+            "dependencies": [
+              "30.1"
+            ],
+            "details": "Define the main service with build context, port mappings, environment variables, and volume mounts for code reloading. Optionally, include commented configuration for additional services such as Redis for future phases.",
+            "status": "pending",
+            "testStrategy": "Start the services using Docker Compose and verify that the application is accessible and that code changes are reflected when using volume mounts."
+          },
+          {
+            "id": 3,
+            "title": "Configure .dockerignore to Exclude Unnecessary Files",
+            "description": "Create a .dockerignore file to prevent unnecessary files and directories from being included in the Docker build context, reducing image size and build time.",
+            "dependencies": [
+              "30.1"
+            ],
+            "details": "List files and directories such as version control folders, virtual environments, cache files, and other non-essential artifacts to be excluded from the Docker context.",
+            "status": "pending",
+            "testStrategy": "Build the Docker image and confirm that excluded files are not present in the final image."
+          },
+          {
+            "id": 4,
+            "title": "Document Docker Deployment Instructions in README",
+            "description": "Update the README.md file to provide clear instructions for building, running, and managing the service using both Docker and Docker Compose.",
+            "dependencies": [
+              "30.1",
+              "30.2",
+              "30.3"
+            ],
+            "details": "Include step-by-step commands for building the image, running the container, starting and stopping services with Docker Compose, and accessing the API endpoint.",
+            "status": "pending",
+            "testStrategy": "Follow the documented instructions to verify that a new user can successfully deploy and access the service using Docker."
+          },
+          {
+            "id": 5,
+            "title": "Implement Health Check Endpoint in Application",
+            "description": "Add a simple health check endpoint to the main application to allow monitoring of the service's status and version.",
+            "dependencies": [
+              "30.1"
+            ],
+            "details": "Define a GET /health endpoint in main.py that returns a JSON response indicating the service's health and version information.",
+            "status": "pending",
+            "testStrategy": "Start the service in a Docker container and send a request to the /health endpoint to verify that it returns the expected response."
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "created": "2025-07-23T10:41:34.488Z",
+      "updated": "2025-07-23T11:11:14.304Z",
+      "description": "Tasks for master context"
+    }
+  }
+}
