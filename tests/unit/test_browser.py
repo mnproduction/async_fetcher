@@ -8,14 +8,17 @@ and custom exception handling for the async web fetching service.
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 from toolkit.browser import (
-    StealthBrowserToolkit, 
-    FetchError, 
-    TimeoutError, 
-    NavigationError, 
-    CaptchaError, 
+    StealthBrowserToolkit,
+    FetchError,
+    TimeoutError,
+    NavigationError,
+    CaptchaError,
     ProxyError,
     BrowserError
 )
+
+# Mark all tests in this file as unit tests
+pytestmark = [pytest.mark.unit, pytest.mark.fast, pytest.mark.mock]
 
 
 class TestCustomErrorClasses:
@@ -63,9 +66,17 @@ class TestStealthBrowserToolkitErrorCategorization:
     @pytest.fixture
     def mock_context(self):
         """Create mock browser context and page."""
-        context = MagicMock()
-        page = MagicMock()
+        context = AsyncMock()
+        page = AsyncMock()
         context.new_page.return_value = page
+
+        # Set up async methods
+        page.goto = AsyncMock()
+        page.content = AsyncMock()
+        page.set_default_navigation_timeout = MagicMock()
+        page.close = AsyncMock()
+        context.close = AsyncMock()
+
         return context, page
 
     @pytest.mark.asyncio
@@ -76,107 +87,111 @@ class TestStealthBrowserToolkitErrorCategorization:
         # Mock successful response
         response = MagicMock()
         response.status = 200
+        response.headers = {"content-type": "text/html"}
         page.goto.return_value = response
         page.content.return_value = "<html><body>Success</body></html>"
-        
-        with patch.object(browser_toolkit, 'create_context', return_value=context):
+
+        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
             result = await browser_toolkit.get_page_content("https://example.com")
-        
+
         assert result == "<html><body>Success</body></html>"
 
     @pytest.mark.asyncio
     async def test_timeout_error_categorization(self, browser_toolkit, mock_context):
         """Test that timeout errors are correctly categorized."""
         context, page = mock_context
-        
+
         # Mock timeout error
         page.goto.side_effect = Exception("Navigation timeout of 30000 ms exceeded")
-        
-        with patch.object(browser_toolkit, 'create_context', return_value=context):
+
+        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
             with pytest.raises(TimeoutError) as exc_info:
                 await browser_toolkit.get_page_content("https://example.com")
-            
+
             assert "timeout" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_proxy_error_categorization(self, browser_toolkit, mock_context):
         """Test that proxy errors are correctly categorized."""
         context, page = mock_context
-        
+
         # Mock proxy error
         page.goto.side_effect = Exception("Proxy connection failed")
-        
-        with patch.object(browser_toolkit, 'create_context', return_value=context):
+
+        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
             with pytest.raises(ProxyError) as exc_info:
                 await browser_toolkit.get_page_content("https://example.com")
-            
+
             assert "proxy" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_navigation_error_categorization(self, browser_toolkit, mock_context):
         """Test that navigation errors are correctly categorized."""
         context, page = mock_context
-        
+
         # Mock navigation error
         page.goto.side_effect = Exception("Failed to navigate to URL")
-        
-        with patch.object(browser_toolkit, 'create_context', return_value=context):
+
+        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
             with pytest.raises(NavigationError) as exc_info:
                 await browser_toolkit.get_page_content("https://example.com")
-            
+
             assert "navigation" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_http_error_categorization(self, browser_toolkit, mock_context):
         """Test that HTTP errors are correctly categorized as navigation errors."""
         context, page = mock_context
-        
+
         # Mock HTTP error response
         response = MagicMock()
         response.status = 404
+        response.headers = {"content-type": "text/html"}
         page.goto.return_value = response
-        
-        with patch.object(browser_toolkit, 'create_context', return_value=context):
+
+        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
             with pytest.raises(NavigationError) as exc_info:
                 await browser_toolkit.get_page_content("https://example.com")
-            
+
             assert "HTTP error: 404" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_captcha_detection(self, browser_toolkit, mock_context):
         """Test that captcha detection works correctly."""
         context, page = mock_context
-        
+
         # Mock successful response but with captcha content
         response = MagicMock()
         response.status = 200
+        response.headers = {"content-type": "text/html"}
         page.goto.return_value = response
         page.content.return_value = "<html><body>Please complete this captcha</body></html>"
-        
-        with patch.object(browser_toolkit, 'create_context', return_value=context):
+
+        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
             with pytest.raises(CaptchaError) as exc_info:
                 await browser_toolkit.get_page_content("https://example.com")
-            
+
             assert "captcha" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_captcha_detection_variations(self, browser_toolkit, mock_context):
         """Test captcha detection with different captcha patterns."""
         context, page = mock_context
-        
+
         captcha_patterns = [
             "Please verify you are human",
             "Robot verification required",
             "Human verification needed"
         ]
-        
+
         for pattern in captcha_patterns:
             response = MagicMock()
             response.status = 200
+            response.headers = {"content-type": "text/html"}
             page.goto.return_value = response
             page.content.return_value = f"<html><body>{pattern}</body></html>"
-            
-            with patch.object(browser_toolkit, 'create_context', return_value=context):
+
+            with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
                 with pytest.raises(CaptchaError):
                     await browser_toolkit.get_page_content("https://example.com")
 
@@ -184,42 +199,42 @@ class TestStealthBrowserToolkitErrorCategorization:
     async def test_no_response_error(self, browser_toolkit, mock_context):
         """Test handling when no response is received."""
         context, page = mock_context
-        
+
         # Mock no response
         page.goto.return_value = None
-        
-        with patch.object(browser_toolkit, 'create_context', return_value=context):
+
+        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
             with pytest.raises(NavigationError) as exc_info:
                 await browser_toolkit.get_page_content("https://example.com")
-            
+
             assert "No response received" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_unexpected_error_categorization(self, browser_toolkit, mock_context):
         """Test that unexpected errors are categorized as navigation errors."""
         context, page = mock_context
-        
+
         # Mock unexpected error
         page.goto.side_effect = Exception("Unexpected browser error")
-        
-        with patch.object(browser_toolkit, 'create_context', return_value=context):
+
+        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
             with pytest.raises(NavigationError) as exc_info:
                 await browser_toolkit.get_page_content("https://example.com")
-            
+
             assert "Navigation failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_resource_cleanup_on_error(self, browser_toolkit, mock_context):
         """Test that resources are properly cleaned up even when errors occur."""
         context, page = mock_context
-        
+
         # Mock error during navigation
         page.goto.side_effect = Exception("Navigation failed")
-        
-        with patch.object(browser_toolkit, 'create_context', return_value=context):
+
+        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
             with pytest.raises(NavigationError):
                 await browser_toolkit.get_page_content("https://example.com")
-            
+
             # Verify cleanup was called
             page.close.assert_called_once()
             context.close.assert_called_once()
@@ -245,14 +260,18 @@ class TestFetchResultModelWithErrorType:
     def test_error_result_requires_error_type(self):
         """Test that error results require error_type field."""
         from api.models import FetchResult
-        
-        with pytest.raises(ValueError):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
             FetchResult(
                 url="https://example.com",
                 status="error",
                 error_message="Connection failed"
                 # Missing error_type
             )
+
+        # Check that the validation error mentions error_type
+        assert "error_type is required for error status" in str(exc_info.value)
 
     def test_error_result_with_error_type(self):
         """Test that error results work correctly with error_type."""

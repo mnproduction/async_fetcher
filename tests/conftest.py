@@ -20,9 +20,7 @@ Version: 1.0.0
 import pytest
 import pytest_asyncio
 import asyncio
-import uuid
 from datetime import datetime
-from typing import Dict, List, Optional
 from unittest.mock import AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
@@ -33,7 +31,6 @@ from api.main import app
 from api.logic import jobs, create_job, update_job_status
 from api.models import FetchRequest, FetchOptions, FetchResult, FetchResponse
 from api.rate_limiting import RateLimiter, RateLimitConfig
-from api.sanitization import sanitize_url, sanitize_proxy_url
 
 
 # =============================================================================
@@ -59,7 +56,7 @@ async def async_client():
     Returns:
         AsyncClient: Async HTTP client for testing
     """
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport
     
     async with AsyncClient(
         transport=ASGITransport(app=app),

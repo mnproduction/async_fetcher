@@ -17,7 +17,7 @@ Version: 1.0.0
 
 import pytest
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest.mock import patch, MagicMock
 from freezegun import freeze_time
 
@@ -25,7 +25,6 @@ from api.logic import (
     jobs, create_job, get_job_status, update_job_status, 
     add_job_result, run_fetching_job, fetch_single_url_with_semaphore
 )
-from api.models import FetchRequest, FetchOptions, FetchResult
 
 
 # =============================================================================

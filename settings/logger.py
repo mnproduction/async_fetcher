@@ -20,7 +20,7 @@ Usage:
 
 import sys
 import structlog
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 # Shared processors for all environments
 _shared_processors = [

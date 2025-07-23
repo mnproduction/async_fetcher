@@ -18,9 +18,9 @@ Version: 1.0.0
 import time
 import asyncio
 from collections import defaultdict, deque
-from typing import Dict, Deque, Optional, Tuple
+from typing import Dict, Deque, Tuple
 from dataclasses import dataclass
-from fastapi import Request, HTTPException
+from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from settings.logger import get_logger

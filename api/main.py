@@ -7,7 +7,7 @@ from fastapi.openapi.utils import get_openapi
 from pydantic import ValidationError
 
 # Import models to verify they work correctly
-from .models import FetchRequest, FetchResponse, JobStatusResponse, FetchResult, FetchOptions
+from .models import FetchRequest, FetchResponse, JobStatusResponse
 
 # Import business logic functions
 from .logic import create_job, run_fetching_job, get_job_status
@@ -16,7 +16,7 @@ from .logic import create_job, run_fetching_job, get_job_status
 from .sanitization import sanitize_uuid
 
 # Import rate limiting middleware
-from .rate_limiting import rate_limit_middleware, fetch_endpoint_rate_limit, get_rate_limit_stats
+from .rate_limiting import get_rate_limit_stats
 
 # Import advanced structured logger
 from settings.logger import get_logger, log_request_context
@@ -1230,25 +1230,51 @@ async def root():
 async def startup_event():
     """
     Application startup event handler.
-    
+
     Logs application startup information and initialization status.
     """
     logger.info(
-        "FastAPI application starting up", 
+        "FastAPI application starting up",
         service="Async Web Fetching Service",
         version="1.0.0",
         docs_url="/docs",
         redoc_url="/redoc"
     )
 
+    # Initialize browser pool for better performance
+    try:
+        from toolkit.browser_pool import get_browser_pool
+        pool = await get_browser_pool()
+        stats = pool.get_stats()
+        logger.info(
+            "Browser pool initialized successfully",
+            **stats
+        )
+    except Exception as e:
+        logger.warning(
+            "Failed to initialize browser pool, will use direct browser creation",
+            error=str(e)
+        )
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """
     Application shutdown event handler.
-    
+
     Logs application shutdown information for monitoring.
     """
+    # Shutdown browser pool
+    try:
+        from toolkit.browser_pool import shutdown_browser_pool
+        await shutdown_browser_pool()
+        logger.info("Browser pool shutdown successfully")
+    except Exception as e:
+        logger.warning(
+            "Error shutting down browser pool",
+            error=str(e)
+        )
+
     logger.info(
         "FastAPI application shutting down",
         service="Async Web Fetching Service"

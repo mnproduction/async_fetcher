@@ -18,8 +18,8 @@ Version: 1.0.0
 import html
 import re
 import unicodedata
-from typing import Optional, List
-from urllib.parse import urlparse, urljoin, urlunparse
+from typing import List
+from urllib.parse import urlparse, urlunparse
 
 
 # =============================================================================

@@ -20,13 +20,10 @@ Author: Async HTML Fetcher Service
 Version: 1.0.0
 """
 
-import re
-import uuid
 from datetime import datetime
 from typing import List, Optional, Literal
-from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator, HttpUrl, AnyHttpUrl
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Import sanitization functions
 from .sanitization import (
@@ -393,14 +390,19 @@ class FetchResult(BaseModel):
         """Ensure error_type follows status-dependent rules."""
         if v is not None and info.data.get('status') == 'success':
             raise ValueError('error_type should be None for success status')
-        if info.data.get('status') == 'error' and not v:
-            raise ValueError('error_type is required for error status')
-        
+
         # Sanitize error type if present
         if v is not None:
             return sanitize_error_message(v)  # Use same sanitization as error messages
-        
+
         return v
+
+    @model_validator(mode='after')
+    def validate_error_fields(self):
+        """Validate error-related fields consistency."""
+        if self.status == 'error' and not self.error_type:
+            raise ValueError('error_type is required for error status')
+        return self
 
 
 class FetchResponse(BaseModel):

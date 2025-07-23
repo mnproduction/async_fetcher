@@ -1,6 +1,6 @@
 import asyncio
-import random
-from typing import Dict, List, Optional, Union, Any
+import platform
+from typing import Optional, Any
 
 from settings.logger import get_logger
 
@@ -95,24 +95,37 @@ class StealthBrowserToolkit:
         self._browser = None
         self._initialized = False
     
-    async def initialize(self) -> None:
+    async def initialize(self) -> bool:
         """
         Initialize the browser instance using patchright's async API.
-        
+
         This method sets up the playwright instance and launches the browser
         with stealth configuration to avoid detection.
+
+        Returns:
+            bool: True if initialization was successful, False otherwise
         """
         if self._initialized:
             self.logger.debug("Browser already initialized, skipping")
-            return
-            
+            return True
+
         self.logger.info("Initializing stealth browser", headless=self.headless)
-        
+
         try:
+            # Fix Windows asyncio event loop policy issue
+            if platform.system() == "Windows":
+                # Set the event loop policy to WindowsProactorEventLoopPolicy
+                # This fixes subprocess creation issues on Windows
+                if isinstance(asyncio.get_event_loop_policy(), asyncio.WindowsProactorEventLoopPolicy):
+                    pass  # Already using the correct policy
+                else:
+                    self.logger.debug("Setting Windows event loop policy for subprocess support")
+                    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
             # Initialize patchright using its async API
             self.logger.debug("Starting patchright instance")
             self._playwright = await async_playwright().start()
-            
+
             # Launch browser with stealth settings
             stealth_args = [
                 "--disable-blink-features=AutomationControlled",
@@ -120,39 +133,63 @@ class StealthBrowserToolkit:
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
                 "--disable-web-security",
-                "--disable-features=VizDisplayCompositor"
+                "--disable-features=VizDisplayCompositor",
+                "--disable-background-timer-throttling",
+                "--disable-backgrounding-occluded-windows",
+                "--disable-renderer-backgrounding"
             ]
-            
+
+            # Add Windows-specific arguments
+            if platform.system() == "Windows":
+                stealth_args.extend([
+                    "--disable-gpu",
+                    "--disable-gpu-sandbox"
+                ])
+
             self.logger.debug(
-                "Launching browser with stealth settings", 
+                "Launching browser with stealth settings",
                 headless=self.headless,
-                channel="chrome" if not self.headless else None,
+                platform=platform.system(),
                 args_count=len(stealth_args)
             )
-            
-            self._browser = await self._playwright.chromium.launch(
-                headless=self.headless,
-                # Use chrome channel for better undetection
-                channel="chrome" if not self.headless else None,
-                # Additional stealth arguments
-                args=stealth_args
-            )
-            
+
+            # Try to launch browser with fallback options
+            try:
+                self._browser = await self._playwright.chromium.launch(
+                    headless=self.headless,
+                    # Use chrome channel for better undetection (if available)
+                    channel="chrome" if not self.headless else None,
+                    # Additional stealth arguments
+                    args=stealth_args
+                )
+            except Exception as channel_error:
+                self.logger.warning(
+                    "Failed to launch with chrome channel, trying without channel",
+                    error=str(channel_error)
+                )
+                # Fallback: launch without specific channel
+                self._browser = await self._playwright.chromium.launch(
+                    headless=self.headless,
+                    args=stealth_args
+                )
+
             self._initialized = True
             self.logger.info(
-                "Stealth browser initialized successfully", 
+                "Stealth browser initialized successfully",
                 headless=self.headless,
-                browser_type="chromium"
+                browser_type="chromium",
+                platform=platform.system()
             )
+            return True
             
         except Exception as e:
             self.logger.error(
-                "Failed to initialize browser", 
+                "Failed to initialize browser",
                 error=str(e),
                 exception_class=e.__class__.__name__
             )
             await self.close()
-            raise
+            return False
     
     async def create_context(self, proxy: Optional[str] = None) -> Any:
         """
