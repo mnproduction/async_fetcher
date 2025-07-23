@@ -1,6 +1,6 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.4.2
-structlog==23.2.0
-patchright==1.52.10
-python-dotenv==1.0.0 
+fastapi
+uvicorn[standard]
+pydantic
+structlog
+patchright
+python-dotenv

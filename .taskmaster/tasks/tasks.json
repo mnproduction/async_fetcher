@@ -76,15 +76,15 @@
         "dependencies": [
           16
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
             "title": "Design FetchOptions Model",
             "description": "Define the FetchOptions Pydantic model with fields for proxies, wait_min, wait_max, and concurrency_limit, including field constraints and a custom validator for wait_max.",
             "dependencies": [],
-            "details": "Implement the FetchOptions class using Pydantic's BaseModel, Field, and validator. Ensure all constraints (e.g., ge, le) are enforced and document each field. Add a validator to ensure wait_max is not less than wait_min.",
-            "status": "pending",
+            "details": "Implement the FetchOptions class using Pydantic's BaseModel, Field, and validator. Ensure all constraints (e.g., ge, le) are enforced and document each field. Add a validator to ensure wait_max is not less than wait_min.\n<info added on 2025-07-23T11:16:18.372Z>\nSuccessfully implemented the FetchOptions model with enhanced validation features:\n\n- Added custom validators:\n  - validate_wait_max(): Ensures wait_max ≥ wait_min\n  - validate_proxies(): Validates proxy URL format (http/https/socks4/socks5)\n\n- Implemented improved field constraints:\n  - wait_min: 0-30 seconds (allowing 0 for no delay)\n  - wait_max: 0-60 seconds with cross-field validation\n  - concurrency_limit: 1-20 (strict bounds for resource management)\n\n- Added comprehensive documentation:\n  - Detailed field descriptions\n  - Proxy format specification\n  - Clear constraint explanations\n\n- Used modern Pydantic v2 syntax:\n  - field_validator decorator instead of deprecated validator\n  - Proper access to field data via info.data\n  - Enhanced error messages\n\nAlso enhanced the FetchRequest model with URL validation for links (must start with http:// or https://), better field formatting and documentation while maintaining backward compatibility.\n</info added on 2025-07-23T11:16:18.372Z>",
+            "status": "done",
             "testStrategy": "Write unit tests to verify correct validation of each field, including edge cases such as negative wait times, concurrency limits outside the allowed range, and wait_max less than wait_min."
           },
           {
@@ -94,8 +94,8 @@
             "dependencies": [
               "17.1"
             ],
-            "details": "Create FetchRequest with a required list of links and an options field using FetchOptions. Implement JobStatusResponse with job_id and status_url fields, ensuring all required constraints and documentation are present.",
-            "status": "pending",
+            "details": "Create FetchRequest with a required list of links and an options field using FetchOptions. Implement JobStatusResponse with job_id and status_url fields, ensuring all required constraints and documentation are present.\n<info added on 2025-07-23T11:17:12.118Z>\nSuccessfully enhanced FetchRequest and JobStatusResponse models:\n\n**FetchRequest Enhancements:**\n1. **Advanced Validation**:\n   - Links count: 1-1000 URLs (prevents abuse)\n   - Duplicate URL detection with clear error messages\n   - URL format validation (http/https only)\n\n2. **Improved Documentation**:\n   - Comprehensive field descriptions\n   - Usage constraints clearly specified\n   - Better error messaging\n\n**JobStatusResponse Enhancements:**\n1. **Robust Validation**:\n   - `job_id`: 1-100 characters, alphanumeric + hyphens/underscores\n   - `status_url`: Must be valid HTTP/HTTPS URL\n   - Input sanitization for security\n\n2. **Custom Validators**:\n   - `validate_job_id()`: Ensures safe identifier format\n   - `validate_status_url()`: Validates URL structure\n\n**Key Features:**\n- **Production-Ready**: Handles edge cases and prevents invalid data\n- **Security-Focused**: Input validation prevents injection attacks\n- **User-Friendly**: Clear error messages for debugging\n- **Scalable**: Handles 1-1000 URLs efficiently with duplicate detection\n\nBoth models now provide comprehensive validation with detailed error messages and are ready for production use.\n</info added on 2025-07-23T11:17:12.118Z>",
+            "status": "done",
             "testStrategy": "Test that FetchRequest correctly validates required fields, rejects empty link lists, and accepts valid FetchOptions. Verify JobStatusResponse serialization and required field enforcement."
           },
           {
@@ -105,8 +105,8 @@
             "dependencies": [
               "17.2"
             ],
-            "details": "Define FetchResult with url, status (as a Literal), html_content (optional), and error_message (optional). Ensure proper documentation and type enforcement.",
-            "status": "pending",
+            "details": "Define FetchResult with url, status (as a Literal), html_content (optional), and error_message (optional). Ensure proper documentation and type enforcement.\n<info added on 2025-07-23T11:18:11.086Z>\nSuccessfully enhanced FetchResult model with comprehensive validation:\n\n**Enhanced Features:**\n1. **Literal Status Type**: \n   - Uses `Literal[\"success\", \"error\"]` for strict validation\n   - Prevents invalid status values at type level\n\n2. **Additional Monitoring Fields**:\n   - `response_time_ms`: Performance tracking (≥0 milliseconds)\n   - `status_code`: HTTP status codes (100-599 range)\n\n3. **Cross-field Validation**:\n   - `html_content`: Only allowed with \"success\" status\n   - `error_message`: Required for \"error\" status, prohibited for \"success\"\n   - Logical consistency enforcement\n\n4. **Advanced Validators**:\n   - `validate_url()`: Ensures proper URL format\n   - `validate_html_content()`: Status-dependent content validation\n   - `validate_error_message()`: Required error details for failures\n\n5. **Comprehensive Documentation**:\n   - Detailed field descriptions\n   - Usage context explanations\n   - Clear constraint specifications\n\n**Key Benefits:**\n- **Type Safety**: Literal types prevent runtime errors\n- **Data Integrity**: Cross-field validation ensures logical consistency\n- **Monitoring Ready**: Performance and HTTP status tracking\n- **Production Quality**: Handles all edge cases with clear error messages\n\nThe FetchResult model now provides robust validation for all fetch outcomes with comprehensive error handling and monitoring capabilities.\n</info added on 2025-07-23T11:18:11.086Z>",
+            "status": "done",
             "testStrategy": "Test that FetchResult enforces allowed status values, accepts or rejects optional fields appropriately, and serializes/deserializes as expected."
           },
           {
@@ -117,7 +117,7 @@
               "17.3"
             ],
             "details": "Implement FetchResponse with all required fields, using a list of FetchResult for results. Enforce allowed status values and document each field.",
-            "status": "pending",
+            "status": "in-progress",
             "testStrategy": "Write tests to ensure FetchResponse validates the structure and types of nested FetchResult objects, enforces status values, and accurately reflects total and completed URLs."
           },
           {
@@ -1038,7 +1038,7 @@
     ],
     "metadata": {
       "created": "2025-07-23T10:41:34.488Z",
-      "updated": "2025-07-23T11:11:14.304Z",
+      "updated": "2025-07-23T11:18:19.963Z",
       "description": "Tasks for master context"
     }
   }
