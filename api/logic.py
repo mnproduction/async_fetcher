@@ -470,7 +470,49 @@ def cleanup_completed_jobs(max_age_hours: int = 24) -> int:
 
 
 # =============================================================================
-# FETCH JOB RUNNER WITH CONCURRENCY CONTROL
+# PROXY SELECTION HELPER FUNCTIONS
+# =============================================================================
+
+def select_random_proxy(proxies: List[str]) -> Optional[str]:
+    """
+    Select a random proxy from the provided list.
+    
+    This function encapsulates the proxy selection logic, making it easier
+    to test and potentially enhance with more sophisticated selection
+    strategies in the future.
+    
+    Args:
+        proxies: List of available proxy URLs
+        
+    Returns:
+        Optional[str]: Selected proxy URL or None if no proxies available
+        
+    Example:
+        ```python
+        proxies = ["http://proxy1:8080", "http://proxy2:8080"]
+        proxy = select_random_proxy(proxies)
+        ```
+    """
+    try:
+        if not proxies:
+            logger.debug("No proxies available, using direct connection")
+            return None
+        
+        if len(proxies) == 1:
+            logger.debug("Single proxy available", proxy=proxies[0])
+            return proxies[0]
+        
+        selected_proxy = random.choice(proxies)
+        logger.debug("Selected random proxy", proxy=selected_proxy, total_proxies=len(proxies))
+        return selected_proxy
+        
+    except Exception as e:
+        logger.error("Error selecting proxy", error=str(e), proxies_count=len(proxies) if proxies else 0)
+        return None
+
+
+# =============================================================================
+# FETCHING FUNCTIONS
 # =============================================================================
 
 async def fetch_single_url_with_semaphore(
@@ -478,14 +520,16 @@ async def fetch_single_url_with_semaphore(
     semaphore: asyncio.Semaphore,
     proxies: List[str],
     wait_min: int,
-    wait_max: int
+    wait_max: int,
+    retry_count: int = 1
 ) -> FetchResult:
     """
-    Fetch a single URL with semaphore-controlled concurrency.
+    Fetch a single URL with semaphore-controlled concurrency and proxy rotation.
     
     This function acquires a semaphore to limit concurrent fetches, selects
-    a random proxy if available, waits for a random interval, and fetches
-    the URL using the StealthBrowserToolkit.
+    a random proxy for each attempt, waits for a random interval, and fetches
+    the URL using the StealthBrowserToolkit. It includes retry logic with
+    different proxies for each attempt.
     
     Args:
         url: The URL to fetch
@@ -493,6 +537,7 @@ async def fetch_single_url_with_semaphore(
         proxies: List of available proxy URLs
         wait_min: Minimum wait time in seconds
         wait_max: Maximum wait time in seconds
+        retry_count: Number of retry attempts (default: 1)
         
     Returns:
         FetchResult: The result of the fetch operation
@@ -501,71 +546,151 @@ async def fetch_single_url_with_semaphore(
         ```python
         semaphore = asyncio.Semaphore(5)
         result = await fetch_single_url_with_semaphore(
-            "https://example.com", semaphore, ["http://proxy1:8080"], 1, 3
+            "https://example.com", semaphore, ["http://proxy1:8080"], 1, 3, 2
         )
         ```
     """
     async with semaphore:
-        # Select a random proxy if available
-        proxy = random.choice(proxies) if proxies else None
-        
-        # Calculate random wait time within range
-        wait_time = random.randint(wait_min, wait_max)
-        
-        logger.info(
-            "Fetching URL with semaphore", 
-            url=url, 
-            proxy=proxy, 
-            wait_time=wait_time
-        )
-        
-        start_time = datetime.utcnow()
-        
-        try:
-            # Use the StealthBrowserToolkit to fetch the URL
-            async with StealthBrowserToolkit(headless=True) as browser:
-                result = await browser.fetch_url(url, proxy, wait_time)
-            
-            # Calculate response time
-            end_time = datetime.utcnow()
-            response_time_ms = int((end_time - start_time).total_seconds() * 1000)
-            
-            # Format the result according to our API model
-            if result["success"]:
-                return FetchResult(
-                    url=url,
-                    status="success",
-                    html_content=result["html"],
-                    response_time_ms=response_time_ms,
-                    status_code=result.get("status_code")
-                )
+        # Try different proxies if retries are needed
+        for attempt in range(retry_count + 1):
+            # Select a random proxy if available
+            # For retries, we want to ensure we don't use the same proxy twice in a row
+            if attempt > 0 and len(proxies) > 1:
+                # For retries, exclude the previously used proxy if possible
+                previous_proxy = proxy if 'proxy' in locals() else None
+                available_proxies = [p for p in proxies if p != previous_proxy]
+                proxy = select_random_proxy(available_proxies) if available_proxies else select_random_proxy(proxies)
             else:
-                return FetchResult(
-                    url=url,
-                    status="error",
-                    error_message=result["error"],
-                    response_time_ms=response_time_ms,
-                    status_code=result.get("status_code")
+                proxy = select_random_proxy(proxies)
+            
+            # Calculate random wait time within range
+            wait_time = random.randint(wait_min, wait_max)
+            
+            logger.info(
+                "Fetching URL with semaphore", 
+                url=url, 
+                proxy=proxy, 
+                wait_time=wait_time,
+                attempt=attempt + 1,
+                max_attempts=retry_count + 1
+            )
+            
+            start_time = datetime.utcnow()
+            
+            try:
+                # Use the StealthBrowserToolkit to fetch the URL
+                async with StealthBrowserToolkit(headless=True) as browser:
+                    result = await browser.fetch_url(url, proxy, wait_time)
+                
+                # Validate the result structure
+                if not isinstance(result, dict):
+                    raise ValueError(f"Invalid result type: {type(result)}")
+                
+                if "success" not in result:
+                    raise ValueError("Result missing 'success' field")
+                
+                # Calculate response time
+                end_time = datetime.utcnow()
+                response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+                
+                # If successful or this is the last attempt, return the result
+                if result["success"] or attempt == retry_count:
+                    # Log the final result
+                    if result["success"]:
+                        logger.info(
+                            "Fetch completed successfully",
+                            url=url,
+                            proxy=proxy,
+                            response_time_ms=response_time_ms,
+                            status_code=result.get("status_code"),
+                            attempt=attempt + 1,
+                            max_attempts=retry_count + 1
+                        )
+                        return FetchResult(
+                            url=url,
+                            status="success",
+                            html_content=result["html"],
+                            response_time_ms=response_time_ms,
+                            status_code=result.get("status_code")
+                        )
+                    else:
+                        logger.error(
+                            "Fetch failed after all attempts",
+                            url=url,
+                            proxy=proxy,
+                            error=result["error"],
+                            response_time_ms=response_time_ms,
+                            status_code=result.get("status_code"),
+                            attempts=retry_count + 1
+                        )
+                        return FetchResult(
+                            url=url,
+                            status="error",
+                            error_message=result["error"],
+                            response_time_ms=response_time_ms,
+                            status_code=result.get("status_code")
+                        )
+                
+                # If we get here, the fetch failed but we have more retries
+                logger.warning(
+                    "Fetch failed, retrying with different proxy", 
+                    url=url, 
+                    error=result["error"],
+                    attempt=attempt + 1,
+                    max_attempts=retry_count + 1
                 )
                 
-        except Exception as e:
-            # Calculate response time for failed requests
-            end_time = datetime.utcnow()
-            response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+                # Wait before retrying with exponential backoff
+                retry_wait = wait_time * (2 ** attempt)  # Exponential backoff
+                logger.info(
+                    "Waiting before retry",
+                    url=url,
+                    wait_time=retry_wait,
+                    attempt=attempt + 1,
+                    max_attempts=retry_count + 1
+                )
+                await asyncio.sleep(retry_wait)
             
-            logger.error(
-                "Error fetching URL with semaphore",
-                url=url,
-                proxy=proxy,
-                error=str(e)
-            )
-            
-            return FetchResult(
-                url=url,
-                status="error",
-                error_message=f"Unexpected error: {str(e)}",
-                response_time_ms=response_time_ms
-            )
+            except Exception as e:
+                # Calculate response time for failed requests
+                end_time = datetime.utcnow()
+                response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+                
+                # If this is the last attempt, return the error result
+                if attempt == retry_count:
+                    logger.error(
+                        "All fetch attempts failed", 
+                        url=url, 
+                        error=str(e),
+                        attempts=retry_count + 1
+                    )
+                    
+                    return FetchResult(
+                        url=url,
+                        status="error",
+                        error_message=f"All fetch attempts failed: {str(e)}",
+                        response_time_ms=response_time_ms
+                    )
+                
+                # Otherwise, log and continue to the next attempt
+                logger.warning(
+                    "Fetch attempt failed, retrying", 
+                    url=url, 
+                    error=str(e),
+                    attempt=attempt + 1,
+                    max_attempts=retry_count + 1
+                )
+                
+                # Wait before retrying with exponential backoff
+                retry_wait = wait_time * (2 ** attempt)  # Exponential backoff
+                logger.info(
+                    "Waiting before retry",
+                    url=url,
+                    wait_time=retry_wait,
+                    attempt=attempt + 1,
+                    max_attempts=retry_count + 1
+                )
+                await asyncio.sleep(retry_wait)
 
 
 async def run_fetching_job(job_id: str) -> None:
@@ -604,6 +729,7 @@ async def run_fetching_job(job_id: str) -> None:
         wait_min = max(0, options.get("wait_min", 1))
         wait_max = max(wait_min, options.get("wait_max", 3))
         concurrency_limit = min(20, max(1, options.get("concurrency_limit", 5)))
+        retry_count = max(0, min(5, options.get("retry_count", 2)))  # Limit retries to 0-5
         
         logger.info(
             "Starting job processing",
@@ -611,15 +737,16 @@ async def run_fetching_job(job_id: str) -> None:
             total_urls=len(links),
             concurrency_limit=concurrency_limit,
             wait_range=f"{wait_min}-{wait_max}s",
-            proxy_count=len(proxies)
+            proxy_count=len(proxies),
+            retry_count=retry_count
         )
         
         # Create a semaphore to limit concurrency
         semaphore = asyncio.Semaphore(concurrency_limit)
         
-        # Create tasks for each URL
+        # Create tasks for each URL with retry logic
         tasks = [
-            fetch_single_url_with_semaphore(url, semaphore, proxies, wait_min, wait_max)
+            fetch_single_url_with_semaphore(url, semaphore, proxies, wait_min, wait_max, retry_count=retry_count)
             for url in links
         ]
         
