@@ -1,13 +1,13 @@
 import time
 import uuid
-from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
+from fastapi import FastAPI, Request, BackgroundTasks, HTTPException, Path
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import models to verify they work correctly
 from .models import FetchRequest, FetchResponse, JobStatusResponse, FetchResult, FetchOptions
 
 # Import business logic functions
-from .logic import create_job, run_fetching_job
+from .logic import create_job, run_fetching_job, get_job_status
 
 # Import advanced structured logger
 from settings.logger import get_logger, log_request_context
@@ -181,6 +181,104 @@ async def start_fetch(request: FetchRequest, background_tasks: BackgroundTasks):
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error: {str(e)}"
+        )
+
+
+@app.get("/fetch/status/{job_id}", response_model=FetchResponse)
+async def get_fetch_status(job_id: str = Path(..., description="The ID of the fetch job")):
+    """
+    Get the status and results of a fetch job with comprehensive error handling.
+    
+    This endpoint retrieves the current status, progress, and results of a fetch job
+    from the in-memory job store. It provides real-time progress tracking and
+    access to completed fetch results.
+    
+    Args:
+        job_id: Unique job identifier (UUID format)
+        
+    Returns:
+        FetchResponse: Complete job status including progress and results
+        
+    Raises:
+        HTTPException: 404 for job not found, 500 for server errors
+        
+    Example:
+        ```bash
+        curl "http://localhost:8000/fetch/status/550e8400-e29b-41d4-a716-446655440000"
+        ```
+        
+    Response Example:
+        ```json
+        {
+          "job_id": "550e8400-e29b-41d4-a716-446655440000",
+          "status": "in_progress",
+          "total_urls": 10,
+          "completed_urls": 7,
+          "progress_percentage": 70.0,
+          "results": [
+            {
+              "url": "https://example.com",
+              "status": "success",
+              "html_content": "<html>...</html>",
+              "response_time_ms": 1250
+            }
+          ],
+          "started_at": "2024-01-15T10:30:00Z"
+        }
+        ```
+    """
+    try:
+        # Log the status request for monitoring
+        logger.info(
+            "Status request received",
+            job_id=job_id,
+            endpoint="/fetch/status/{job_id}"
+        )
+        
+        # Get the job status from the in-memory store
+        job_response = get_job_status(job_id)
+        
+        if job_response is None:
+            # Job not found - return 404 error
+            logger.warning(
+                "Job not found",
+                job_id=job_id,
+                error="Job with specified ID does not exist"
+            )
+            raise HTTPException(
+                status_code=404,
+                detail=f"Job with ID {job_id} not found"
+            )
+        
+        # Log successful status retrieval
+        logger.info(
+            "Successfully retrieved job status",
+            job_id=job_id,
+            status=job_response.status,
+            completed_urls=job_response.completed_urls,
+            total_urls=job_response.total_urls,
+            progress_percentage=job_response.progress_percentage,
+            is_finished=job_response.is_finished
+        )
+        
+        # Return the complete job status and results
+        return job_response
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404) without modification
+        raise
+        
+    except Exception as e:
+        # Handle unexpected server errors
+        logger.error(
+            "Error retrieving job status",
+            job_id=job_id,
+            error=str(e),
+            error_type=type(e).__name__
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving job status: {str(e)}"
         )
 
 
