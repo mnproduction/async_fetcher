@@ -620,7 +620,7 @@
           19,
           21
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -628,7 +628,7 @@
             "description": "Create and document custom exception classes (FetchError, TimeoutError, NavigationError, CaptchaError, ProxyError) to represent and categorize common fetching errors in the StealthBrowserToolkit.",
             "dependencies": [],
             "details": "Implement a clear exception hierarchy for fetch-related errors, ensuring each error type is well-documented and inherits from a common base class for structured handling.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Write unit tests to verify that each custom exception can be raised and caught independently, and that their documentation is accessible."
           },
           {
@@ -639,7 +639,7 @@
               "25.1"
             ],
             "details": "Refactor the try-except logic to catch and re-raise specific exceptions, ensuring that each error scenario is mapped to the correct custom error class for precise categorization.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Simulate each error scenario (timeout, navigation failure, captcha, proxy error) and verify that the correct custom exception is raised and logged."
           },
           {
@@ -650,7 +650,7 @@
               "25.2"
             ],
             "details": "Update the model schema and all relevant documentation to reflect the new error_type field, ensuring backward compatibility and clear API contracts.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Write unit tests to confirm that FetchResult instances correctly serialize and deserialize the error_type field, and that it is populated as expected during error scenarios."
           },
           {
@@ -661,7 +661,7 @@
               "25.3"
             ],
             "details": "Ensure that the function's return value always includes the error_type field when an error occurs, and update any related documentation or type hints.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the function by simulating each error type and verifying that the returned dictionary includes the correct error_type value."
           },
           {
@@ -672,7 +672,7 @@
               "25.4"
             ],
             "details": "Write tests that simulate each defined error scenario, as well as unexpected errors, and assert that the correct error_type and error_message are reported in FetchResult and API responses.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run all tests and ensure 100% coverage for error categorization logic, including negative and edge cases. Review logs to confirm accurate error reporting."
           }
         ]
@@ -1038,7 +1038,7 @@
     ],
     "metadata": {
       "created": "2025-07-23T10:41:34.488Z",
-      "updated": "2025-07-23T14:46:12.619Z",
+      "updated": "2025-07-23T14:55:12.958Z",
       "description": "Tasks for master context"
     }
   }

@@ -335,6 +335,11 @@ class FetchResult(BaseModel):
         max_length=1000,  # Reasonable error message length
         description="Detailed error message explaining the failure (only present on error)"
     )
+    error_type: Optional[str] = Field(
+        None,
+        max_length=100,  # Error type names are typically short
+        description="Type of error that occurred (e.g., 'TimeoutError', 'NavigationError', 'CaptchaError')"
+    )
     response_time_ms: Optional[int] = Field(
         None,
         ge=0,
@@ -379,6 +384,21 @@ class FetchResult(BaseModel):
         # Sanitize error message if present
         if v is not None:
             return sanitize_error_message(v)
+        
+        return v
+    
+    @field_validator('error_type')
+    @classmethod
+    def validate_error_type(cls, v, info):
+        """Ensure error_type follows status-dependent rules."""
+        if v is not None and info.data.get('status') == 'success':
+            raise ValueError('error_type should be None for success status')
+        if info.data.get('status') == 'error' and not v:
+            raise ValueError('error_type is required for error status')
+        
+        # Sanitize error type if present
+        if v is not None:
+            return sanitize_error_message(v)  # Use same sanitization as error messages
         
         return v
 

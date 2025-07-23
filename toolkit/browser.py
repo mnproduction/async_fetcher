@@ -8,6 +8,72 @@ from settings.logger import get_logger
 from patchright.async_api import async_playwright
 
 
+# =============================================================================
+# CUSTOM ERROR CLASSES FOR FETCH OPERATIONS
+# =============================================================================
+
+class FetchError(Exception):
+    """
+    Base class for fetch-related errors.
+    
+    This is the parent class for all errors that can occur during
+    web fetching operations. It provides a common interface for
+    error handling and categorization.
+    """
+    pass
+
+
+class TimeoutError(FetchError):
+    """
+    Error raised when a fetch operation times out.
+    
+    This error occurs when navigation or page loading takes longer
+    than the configured timeout period.
+    """
+    pass
+
+
+class NavigationError(FetchError):
+    """
+    Error raised when navigation to a URL fails.
+    
+    This error occurs when the browser cannot successfully navigate
+    to the target URL, including HTTP errors (4xx, 5xx) and
+    network connectivity issues.
+    """
+    pass
+
+
+class CaptchaError(FetchError):
+    """
+    Error raised when a captcha is detected on the page.
+    
+    This error occurs when the fetched page contains captcha
+    verification mechanisms that prevent automated access.
+    """
+    pass
+
+
+class ProxyError(FetchError):
+    """
+    Error raised when there's an issue with the proxy configuration.
+    
+    This error occurs when the proxy server is unreachable,
+    authentication fails, or other proxy-related issues arise.
+    """
+    pass
+
+
+class BrowserError(FetchError):
+    """
+    Error raised when there's an issue with the browser itself.
+    
+    This error occurs when the browser instance cannot be created,
+    crashes, or encounters other browser-level problems.
+    """
+    pass
+
+
 class StealthBrowserToolkit:
     """
     A toolkit for managing stealth browser instances for web scraping using Patchright.
@@ -122,13 +188,14 @@ class StealthBrowserToolkit:
             wait_time: Time to wait after page load (default: 2 seconds)
             
         Returns:
-            Dictionary containing fetch result with keys: url, success, html, error
+            Dictionary containing fetch result with keys: url, success, html, error, error_type
         """
         result = {
             "url": url,
             "success": False,
             "html": None,
-            "error": None
+            "error": None,
+            "error_type": None
         }
         
         context = None
@@ -141,33 +208,59 @@ class StealthBrowserToolkit:
             context = await self.create_context(proxy)
             page = await context.new_page()
             
-            # Navigate to the URL with stealth settings
-            response = await page.goto(
-                url, 
-                wait_until="networkidle",
-                timeout=30000  # 30 second timeout
-            )
+            # Set timeout for navigation
+            page.set_default_navigation_timeout(30000)  # 30 seconds
             
-            if not response or response.status >= 400:
-                result["error"] = f"Failed to load page: HTTP {response.status if response else 'unknown'}"
-                self.logger.warning("HTTP error during fetch", url=url, status=response.status if response else 'unknown')
-                return result
+            # Navigate to the URL with stealth settings
+            try:
+                response = await page.goto(
+                    url, 
+                    wait_until="networkidle",
+                    timeout=30000  # 30 second timeout
+                )
+            except Exception as e:
+                error_str = str(e).lower()
+                if "timeout" in error_str:
+                    raise TimeoutError(f"Navigation timed out: {str(e)}")
+                elif "proxy" in error_str or "connection" in error_str:
+                    raise ProxyError(f"Proxy error: {str(e)}")
+                else:
+                    raise NavigationError(f"Navigation failed: {str(e)}")
+            
+            if not response:
+                raise NavigationError("No response received from the server")
+            
+            if response.status >= 400:
+                raise NavigationError(f"HTTP error: {response.status}")
             
             # Wait for additional time to ensure page is fully loaded
             await asyncio.sleep(wait_time)
             
+            # Check for common captcha patterns
+            content = await page.content()
+            if any(pattern in content.lower() for pattern in ["captcha", "robot", "human verification", "verify you are human"]):
+                raise CaptchaError("Captcha detected on the page")
+            
             # Get the HTML content
-            html = await page.content()
-            result["html"] = html
+            result["html"] = content
             result["success"] = True
             
-            self.logger.info("Successfully fetched URL", url=url, content_length=len(html))
+            self.logger.info("Successfully fetched URL", url=url, content_length=len(content))
+            return result
+            
+        except FetchError as e:
+            error_message = str(e)
+            error_type = e.__class__.__name__
+            self.logger.error("Fetch error", url=url, error_type=error_type, error=error_message)
+            result["error"] = error_message
+            result["error_type"] = error_type
             return result
             
         except Exception as e:
             error_message = str(e)
-            self.logger.error("Error fetching URL", url=url, error=error_message)
+            self.logger.error("Unexpected error fetching URL", url=url, error=error_message)
             result["error"] = error_message
+            result["error_type"] = "UnexpectedError"
             return result
             
         finally:

@@ -627,6 +627,7 @@ async def fetch_single_url_with_semaphore(
                             url=url,
                             status="error",
                             error_message=result["error"],
+                            error_type=result.get("error_type"),
                             response_time_ms=response_time_ms,
                             status_code=result.get("status_code")
                         )
@@ -669,6 +670,7 @@ async def fetch_single_url_with_semaphore(
                         url=url,
                         status="error",
                         error_message=f"All fetch attempts failed: {str(e)}",
+                        error_type="UnexpectedError",
                         response_time_ms=response_time_ms
                     )
                 
