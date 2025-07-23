@@ -1,10 +1,13 @@
 import time
 import uuid
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import models to verify they work correctly
 from .models import FetchRequest, FetchResponse, JobStatusResponse, FetchResult, FetchOptions
+
+# Import business logic functions
+from .logic import create_job, run_fetching_job
 
 # Import advanced structured logger
 from settings.logger import get_logger, log_request_context
@@ -87,6 +90,98 @@ async def root():
     """
     logger.info("Root endpoint accessed", endpoint="/", action="get_api_info")
     return {"message": "Async Web Fetching Service API"}
+
+
+@app.post("/fetch/start", response_model=JobStatusResponse)
+async def start_fetch(request: FetchRequest, background_tasks: BackgroundTasks):
+    """
+    Start a new fetch job with comprehensive validation and background processing.
+    
+    This endpoint accepts a FetchRequest containing URLs and configuration options,
+    validates the request, creates a job in the in-memory store, and schedules
+    the background processing task.
+    
+    Args:
+        request: FetchRequest object containing URLs and options
+        background_tasks: FastAPI BackgroundTasks for async job scheduling
+        
+    Returns:
+        JobStatusResponse: Job ID and status URL for tracking progress
+        
+    Raises:
+        HTTPException: 422 for validation errors, 500 for server errors
+        
+    Example:
+        ```bash
+        curl -X POST "http://localhost:8000/fetch/start" \
+             -H "Content-Type: application/json" \
+             -d '{
+               "links": ["https://example.com", "https://test.com"],
+               "options": {
+                 "concurrency_limit": 3,
+                 "wait_min": 1,
+                 "wait_max": 3
+               }
+             }'
+        ```
+    """
+    try:
+        # Log the incoming request for debugging
+        logger.info(
+            "Starting fetch job",
+            url_count=len(request.links),
+            concurrency_limit=request.options.concurrency_limit,
+            wait_range=f"{request.options.wait_min}-{request.options.wait_max}s",
+            proxy_count=len(request.options.proxies)
+        )
+        
+        # Create a new job in the in-memory store
+        job_id = create_job(request)
+        
+        # Schedule the job to run in the background
+        background_tasks.add_task(run_fetching_job, job_id)
+        
+        # Construct the status URL for job tracking
+        # Note: In production, this should use the actual base URL
+        status_url = f"/fetch/status/{job_id}"
+        
+        logger.info(
+            "Successfully started fetch job",
+            job_id=job_id,
+            status_url=status_url,
+            url_count=len(request.links)
+        )
+        
+        # Return the job ID and status URL
+        return JobStatusResponse(
+            job_id=job_id,
+            status_url=status_url
+        )
+        
+    except ValueError as e:
+        # Handle validation errors from Pydantic models
+        logger.warning(
+            "Validation error in fetch request",
+            error=str(e),
+            url_count=len(request.links) if hasattr(request, 'links') else 0
+        )
+        raise HTTPException(
+            status_code=422,
+            detail=f"Validation error: {str(e)}"
+        )
+        
+    except Exception as e:
+        # Handle unexpected server errors
+        logger.error(
+            "Error starting fetch job",
+            error=str(e),
+            error_type=type(e).__name__,
+            url_count=len(request.links) if hasattr(request, 'links') else 0
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
 
 
 @app.on_event("startup")
