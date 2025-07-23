@@ -103,35 +103,54 @@ class StealthBrowserToolkit:
         with stealth configuration to avoid detection.
         """
         if self._initialized:
+            self.logger.debug("Browser already initialized, skipping")
             return
             
         self.logger.info("Initializing stealth browser", headless=self.headless)
         
         try:
             # Initialize playwright using patchright's async API
+            self.logger.debug("Starting playwright instance")
             self._playwright = await async_playwright().start()
             
             # Launch browser with stealth settings
+            stealth_args = [
+                "--disable-blink-features=AutomationControlled",
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-web-security",
+                "--disable-features=VizDisplayCompositor"
+            ]
+            
+            self.logger.debug(
+                "Launching browser with stealth settings", 
+                headless=self.headless,
+                channel="chrome" if not self.headless else None,
+                args_count=len(stealth_args)
+            )
+            
             self._browser = await self._playwright.chromium.launch(
                 headless=self.headless,
                 # Use chrome channel for better undetection
                 channel="chrome" if not self.headless else None,
                 # Additional stealth arguments
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--disable-dev-shm-usage",
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-web-security",
-                    "--disable-features=VizDisplayCompositor"
-                ]
+                args=stealth_args
             )
             
             self._initialized = True
-            self.logger.info("Stealth browser initialized successfully")
+            self.logger.info(
+                "Stealth browser initialized successfully", 
+                headless=self.headless,
+                browser_type="chromium"
+            )
             
         except Exception as e:
-            self.logger.error("Failed to initialize browser", error=str(e))
+            self.logger.error(
+                "Failed to initialize browser", 
+                error=str(e),
+                exception_class=e.__class__.__name__
+            )
             await self.close()
             raise
     
@@ -168,14 +187,27 @@ class StealthBrowserToolkit:
         if proxy:
             self.logger.info("Creating context with proxy", proxy=proxy)
             context_options["proxy"] = {"server": proxy}
+        else:
+            self.logger.debug("Creating context without proxy")
         
         try:
+            self.logger.debug("Creating browser context with stealth settings", headless=self.headless)
             context = await self._browser.new_context(**context_options)
-            self.logger.debug("Browser context created successfully", proxy=proxy is not None)
+            self.logger.debug(
+                "Browser context created successfully", 
+                proxy=proxy is not None,
+                viewport=context_options["viewport"],
+                user_agent=context_options["user_agent"][:50] + "..."  # Truncate for logging
+            )
             return context
             
         except Exception as e:
-            self.logger.error("Failed to create browser context", error=str(e), proxy=proxy)
+            self.logger.error(
+                "Failed to create browser context", 
+                error=str(e), 
+                proxy=proxy,
+                exception_class=e.__class__.__name__
+            )
             raise
     
     async def fetch_url(self, url: str, proxy: Optional[str] = None, wait_time: int = 2) -> Dict[str, Union[str, bool, None]]:
@@ -202,16 +234,25 @@ class StealthBrowserToolkit:
         page = None
         
         try:
-            self.logger.info("Fetching URL", url=url, proxy=proxy is not None)
+            self.logger.info(
+                "Starting URL fetch", 
+                url=url, 
+                proxy=proxy is not None,
+                wait_time=wait_time,
+                headless=self.headless
+            )
             
             # Create stealth context
+            self.logger.debug("Creating browser context", proxy=proxy is not None)
             context = await self.create_context(proxy)
             page = await context.new_page()
             
             # Set timeout for navigation
             page.set_default_navigation_timeout(30000)  # 30 seconds
+            self.logger.debug("Navigation timeout set", timeout_ms=30000)
             
             # Navigate to the URL with stealth settings
+            self.logger.debug("Starting navigation", url=url, wait_until="networkidle")
             try:
                 response = await page.goto(
                     url, 
@@ -220,6 +261,7 @@ class StealthBrowserToolkit:
                 )
             except Exception as e:
                 error_str = str(e).lower()
+                self.logger.warning("Navigation failed", url=url, error=str(e))
                 if "timeout" in error_str:
                     raise TimeoutError(f"Navigation timed out: {str(e)}")
                 elif "proxy" in error_str or "connection" in error_str:
@@ -228,77 +270,137 @@ class StealthBrowserToolkit:
                     raise NavigationError(f"Navigation failed: {str(e)}")
             
             if not response:
+                self.logger.error("No response received", url=url)
                 raise NavigationError("No response received from the server")
             
+            self.logger.info(
+                "Navigation complete", 
+                url=url, 
+                status_code=response.status,
+                content_type=response.headers.get("content-type", "unknown")
+            )
+            
             if response.status >= 400:
+                self.logger.warning("HTTP error response", url=url, status_code=response.status)
                 raise NavigationError(f"HTTP error: {response.status}")
             
             # Wait for additional time to ensure page is fully loaded
+            self.logger.debug("Waiting for page to fully load", wait_time=wait_time)
             await asyncio.sleep(wait_time)
             
-            # Check for common captcha patterns
+            # Get the HTML content
+            self.logger.debug("Retrieving page content", url=url)
             content = await page.content()
-            if any(pattern in content.lower() for pattern in ["captcha", "robot", "human verification", "verify you are human"]):
+            
+            # Check for common captcha patterns
+            captcha_patterns = ["captcha", "robot", "human verification", "verify you are human"]
+            if any(pattern in content.lower() for pattern in captcha_patterns):
+                self.logger.warning("Captcha detected", url=url, content_length=len(content))
                 raise CaptchaError("Captcha detected on the page")
             
-            # Get the HTML content
+            # Set successful result
             result["html"] = content
             result["success"] = True
             
-            self.logger.info("Successfully fetched URL", url=url, content_length=len(content))
+            self.logger.info(
+                "Successfully fetched URL", 
+                url=url, 
+                content_length=len(content),
+                status_code=response.status
+            )
             return result
             
         except FetchError as e:
             error_message = str(e)
             error_type = e.__class__.__name__
-            self.logger.error("Fetch error", url=url, error_type=error_type, error=error_message)
+            self.logger.error(
+                "Fetch error", 
+                url=url, 
+                error_type=error_type, 
+                error=error_message,
+                exception_class=e.__class__.__name__
+            )
             result["error"] = error_message
             result["error_type"] = error_type
             return result
             
         except Exception as e:
             error_message = str(e)
-            self.logger.error("Unexpected error fetching URL", url=url, error=error_message)
+            self.logger.error(
+                "Unexpected error fetching URL", 
+                url=url, 
+                error=error_message,
+                exception_class=e.__class__.__name__,
+                exception_type=type(e).__name__
+            )
             result["error"] = error_message
             result["error_type"] = "UnexpectedError"
             return result
             
         finally:
             # Clean up resources
+            self.logger.debug("Cleaning up browser resources", url=url)
+            
             if page:
                 try:
                     await page.close()
+                    self.logger.debug("Page closed successfully", url=url)
                 except Exception as e:
-                    self.logger.warning("Error closing page", error=str(e))
+                    self.logger.warning(
+                        "Error closing page", 
+                        url=url, 
+                        error=str(e),
+                        exception_class=e.__class__.__name__
+                    )
             
             if context:
                 try:
                     await context.close()
+                    self.logger.debug("Context closed successfully", url=url)
                 except Exception as e:
-                    self.logger.warning("Error closing context", error=str(e))
+                    self.logger.warning(
+                        "Error closing context", 
+                        url=url, 
+                        error=str(e),
+                        exception_class=e.__class__.__name__
+                    )
     
     async def close(self) -> None:
         """
         Close the browser instance and free resources.
         """
+        self.logger.debug("Starting browser cleanup")
+        
         if self._browser:
-            self.logger.info("Closing browser")
+            self.logger.info("Closing browser instance")
             try:
                 await self._browser.close()
+                self.logger.debug("Browser closed successfully")
             except Exception as e:
-                self.logger.warning("Error closing browser", error=str(e))
+                self.logger.warning(
+                    "Error closing browser", 
+                    error=str(e),
+                    exception_class=e.__class__.__name__
+                )
             finally:
                 self._browser = None
         
         if self._playwright:
+            self.logger.debug("Stopping playwright instance")
             try:
                 await self._playwright.stop()
+                self.logger.debug("Playwright stopped successfully")
             except Exception as e:
-                self.logger.warning("Error stopping playwright", error=str(e))
+                self.logger.warning(
+                    "Error stopping playwright", 
+                    error=str(e),
+                    exception_class=e.__class__.__name__
+                )
             finally:
                 self._playwright = None
         
         self._initialized = False
+        self.logger.debug("Browser cleanup completed")
     
     async def __aenter__(self):
         """

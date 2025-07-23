@@ -26,6 +26,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Union
 
 from settings.logger import get_logger
+from settings.performance_metrics import record_fetch_duration, record_job_duration
 from api.models import FetchRequest, FetchResponse, FetchResult, JobStatusResponse
 from toolkit.browser import StealthBrowserToolkit
 
@@ -262,26 +263,57 @@ def update_job_status(job_id: str, status: str, error_message: Optional[str] = N
     if status == "in_progress" and old_status == "pending":
         # Job is starting - set started_at timestamp
         job["started_at"] = datetime.utcnow().isoformat()
-        logger.info("Job started processing", job_id=job_id)
+        logger.info(
+            "Job started processing",
+            job_id=job_id,
+            total_urls=job.get("total_urls", 0),
+            created_at=job.get("created_at")
+        )
     
     elif status in ["completed", "failed"]:
         # Job is finishing - set completed_at timestamp
         job["completed_at"] = datetime.utcnow().isoformat()
+        
+        # Calculate job duration if we have start time
+        job_duration = None
+        if job.get("started_at"):
+            try:
+                start_time = datetime.fromisoformat(job["started_at"])
+                end_time = datetime.fromisoformat(job["completed_at"])
+                job_duration = (end_time - start_time).total_seconds()
+            except Exception:
+                pass
+        
         if status == "completed":
-            logger.info("Job completed successfully", job_id=job_id)
+            logger.info(
+                "Job completed successfully",
+                job_id=job_id,
+                completed_urls=job.get("completed_urls", 0),
+                total_urls=job.get("total_urls", 0),
+                job_duration_seconds=round(job_duration, 2) if job_duration else None
+            )
         else:
-            logger.info("Job failed", job_id=job_id, error_message=error_message)
+            logger.error(
+                "Job failed",
+                job_id=job_id,
+                error_message=error_message,
+                completed_urls=job.get("completed_urls", 0),
+                total_urls=job.get("total_urls", 0),
+                job_duration_seconds=round(job_duration, 2) if job_duration else None
+            )
     
     # Set error message if provided
     if error_message:
         job["error_message"] = error_message
     
-    logger.info(
+    logger.debug(
         "Updated job status",
         job_id=job_id,
         old_status=old_status,
         new_status=status,
-        error_message=error_message
+        error_message=error_message,
+        completed_urls=job.get("completed_urls", 0),
+        total_urls=job.get("total_urls", 0)
     )
     
     return True
@@ -331,27 +363,43 @@ def add_job_result(job_id: str, result: Union[FetchResult, Dict[str, Any]]) -> b
     job["completed_urls"] += 1
     job["updated_at"] = datetime.utcnow().isoformat()
     
+    # Get URL and status for logging
+    url = result.url if hasattr(result, 'url') else result.get('url', 'unknown')
+    status = result.status if hasattr(result, 'status') else result.get('status', 'unknown')
+    error_type = result.error_type if hasattr(result, 'error_type') else result.get('error_type')
+    response_time = result.response_time_ms if hasattr(result, 'response_time_ms') else result.get('response_time_ms')
+    
     # Check if job is complete
     if job["completed_urls"] >= job["total_urls"]:
         # All URLs processed - mark job as completed
         update_job_status(job_id, "completed")
+        
+        logger.info(
+            "Job completed - all URLs processed",
+            job_id=job_id,
+            url=url,
+            status=status,
+            completed_urls=job["completed_urls"],
+            total_urls=job["total_urls"],
+            progress_percentage=100.0,
+            error_type=error_type,
+            response_time_ms=response_time
+        )
     else:
         # Ensure job is in progress if it was pending
         if job["status"] == "pending":
             update_job_status(job_id, "in_progress")
-    
-            # Get URL and status for logging
-        url = result.url if hasattr(result, 'url') else result.get('url', 'unknown')
-        status = result.status if hasattr(result, 'status') else result.get('status', 'unknown')
         
-        logger.info(
+        logger.debug(
             "Added job result",
             job_id=job_id,
             url=url,
             status=status,
             completed_urls=job["completed_urls"],
             total_urls=job["total_urls"],
-            progress_percentage=round((job["completed_urls"] / job["total_urls"]) * 100, 1)
+            progress_percentage=round((job["completed_urls"] / job["total_urls"]) * 100, 1),
+            error_type=error_type,
+            response_time_ms=response_time
         )
     
     return True
@@ -593,6 +641,13 @@ async def fetch_single_url_with_semaphore(
                 end_time = datetime.utcnow()
                 response_time_ms = int((end_time - start_time).total_seconds() * 1000)
                 
+                # Record performance metrics
+                record_fetch_duration(
+                    duration_ms=response_time_ms,
+                    success=result["success"],
+                    error_type=result.get("error_type") if not result["success"] else None
+                )
+                
                 # If successful or this is the last attempt, return the result
                 if result["success"] or attempt == retry_count:
                     # Log the final result
@@ -656,6 +711,13 @@ async def fetch_single_url_with_semaphore(
                 # Calculate response time for failed requests
                 end_time = datetime.utcnow()
                 response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+                
+                # Record performance metrics for exception
+                record_fetch_duration(
+                    duration_ms=response_time_ms,
+                    success=False,
+                    error_type="UnexpectedError"
+                )
                 
                 # If this is the last attempt, return the error result
                 if attempt == retry_count:
@@ -722,6 +784,9 @@ async def run_fetching_job(job_id: str) -> None:
     job = jobs[job_id]
     request_data = job["request"]
     
+    # Record job start time for performance tracking
+    job_start_time = datetime.utcnow()
+    
     try:
         # Extract options from the request
         links = request_data["links"]
@@ -753,29 +818,159 @@ async def run_fetching_job(job_id: str) -> None:
         ]
         
         # Process URLs concurrently with controlled concurrency
+        completed_urls = 0
+        successful_urls = 0
+        failed_urls = 0
+        error_types = {}
+        
+        logger.info(
+            "Starting concurrent URL processing",
+            job_id=job_id,
+            total_urls=len(links),
+            concurrency_limit=concurrency_limit
+        )
+        
         for task in asyncio.as_completed(tasks):
             try:
                 result = await task
                 add_job_result(job_id, result)
+                completed_urls += 1
+                
+                # Track success/failure statistics
+                if result.status == "success":
+                    successful_urls += 1
+                    logger.debug(
+                        "URL fetch completed successfully",
+                        job_id=job_id,
+                        url=result.url,
+                        response_time_ms=result.response_time_ms,
+                        status_code=result.status_code,
+                        completed_urls=completed_urls,
+                        total_urls=len(links),
+                        success_rate=round((successful_urls / completed_urls) * 100, 2)
+                    )
+                else:
+                    failed_urls += 1
+                    error_type = result.error_type or "UnknownError"
+                    error_types[error_type] = error_types.get(error_type, 0) + 1
+                    
+                    logger.warning(
+                        "URL fetch failed",
+                        job_id=job_id,
+                        url=result.url,
+                        error_type=error_type,
+                        error_message=result.error_message,
+                        response_time_ms=result.response_time_ms,
+                        completed_urls=completed_urls,
+                        total_urls=len(links),
+                        failed_urls=failed_urls
+                    )
+                
+                # Log progress every 10 URLs or when 25%, 50%, 75% complete
+                progress_percentage = (completed_urls / len(links)) * 100
+                if (completed_urls % 10 == 0 or 
+                    progress_percentage in [25, 50, 75] or 
+                    completed_urls == len(links)):
+                    logger.info(
+                        "Job progress update",
+                        job_id=job_id,
+                        progress_percentage=round(progress_percentage, 1),
+                        completed_urls=completed_urls,
+                        total_urls=len(links),
+                        successful_urls=successful_urls,
+                        failed_urls=failed_urls,
+                        success_rate=round((successful_urls / completed_urls) * 100, 2) if completed_urls > 0 else 0
+                    )
+                
             except Exception as e:
+                completed_urls += 1
+                failed_urls += 1
+                error_type = "TaskProcessingError"
+                error_types[error_type] = error_types.get(error_type, 0) + 1
+                
                 logger.error(
                     "Error processing URL task",
                     job_id=job_id,
-                    error=str(e)
+                    error=str(e),
+                    error_type=error_type,
+                    completed_urls=completed_urls,
+                    total_urls=len(links),
+                    failed_urls=failed_urls
                 )
                 # Add a generic error result if we can't determine which URL failed
                 error_result = FetchResult(
                     url="unknown",
                     status="error",
-                    error_message=f"Task processing error: {str(e)}"
+                    error_message=f"Task processing error: {str(e)}",
+                    error_type=error_type
                 )
                 add_job_result(job_id, error_result)
+        
+        # Record job completion performance metrics
+        job_end_time = datetime.utcnow()
+        job_duration_ms = int((job_end_time - job_start_time).total_seconds() * 1000)
+        
+        # Calculate detailed statistics
+        total_urls = len(links)
+        success_rate = successful_urls / total_urls if total_urls > 0 else 0
+        failure_rate = failed_urls / total_urls if total_urls > 0 else 0
+        
+        # Consider job successful if at least 50% of URLs succeeded
+        job_success = success_rate >= 0.5
+        
+        # Calculate average response time for successful fetches
+        successful_results = [r for r in job.get("results", []) if r.get("status") == "success"]
+        avg_response_time = 0
+        if successful_results:
+            response_times = [r.get("response_time_ms", 0) for r in successful_results]
+            avg_response_time = sum(response_times) / len(response_times)
+        
+        record_job_duration(
+            duration_ms=job_duration_ms,
+            success=job_success,
+            url_count=total_urls
+        )
+        
+        logger.info(
+            "Job completed successfully",
+            job_id=job_id,
+            duration_ms=job_duration_ms,
+            success=job_success,
+            success_rate=round(success_rate * 100, 2),
+            failure_rate=round(failure_rate * 100, 2),
+            total_urls=total_urls,
+            successful_urls=successful_urls,
+            failed_urls=failed_urls,
+            avg_response_time_ms=round(avg_response_time, 2),
+            error_types=error_types,
+            concurrency_limit=concurrency_limit,
+            proxy_count=len(proxies),
+            retry_count=retry_count
+        )
     
     except Exception as e:
+        # Record job failure performance metrics
+        job_end_time = datetime.utcnow()
+        job_duration_ms = int((job_end_time - job_start_time).total_seconds() * 1000)
+        
+        record_job_duration(
+            duration_ms=job_duration_ms,
+            success=False,
+            url_count=len(links)
+        )
+        
         logger.error(
-            "Error running job",
+            "Job failed with exception",
             job_id=job_id,
-            error=str(e)
+            error=str(e),
+            error_type=type(e).__name__,
+            duration_ms=job_duration_ms,
+            completed_urls=completed_urls if 'completed_urls' in locals() else 0,
+            total_urls=len(links),
+            successful_urls=successful_urls if 'successful_urls' in locals() else 0,
+            failed_urls=failed_urls if 'failed_urls' in locals() else 0,
+            concurrency_limit=concurrency_limit if 'concurrency_limit' in locals() else 0,
+            proxy_count=len(proxies) if 'proxies' in locals() else 0
         )
         update_job_status(job_id, "failed", str(e))
 
