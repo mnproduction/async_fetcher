@@ -109,8 +109,8 @@ class StealthBrowserToolkit:
         self.logger.info("Initializing stealth browser", headless=self.headless)
         
         try:
-            # Initialize playwright using patchright's async API
-            self.logger.debug("Starting playwright instance")
+            # Initialize patchright using its async API
+            self.logger.debug("Starting patchright instance")
             self._playwright = await async_playwright().start()
             
             # Launch browser with stealth settings
@@ -210,7 +210,7 @@ class StealthBrowserToolkit:
             )
             raise
     
-    async def fetch_url(self, url: str, proxy: Optional[str] = None, wait_time: int = 2) -> Dict[str, Union[str, bool, None]]:
+    async def get_page_content(self, url: str, proxy: Optional[str] = None, wait_time: int = 2) -> Optional[str]:
         """
         Fetch a URL using a stealth browser context and return the HTML content.
         
@@ -220,16 +220,15 @@ class StealthBrowserToolkit:
             wait_time: Time to wait after page load (default: 2 seconds)
             
         Returns:
-            Dictionary containing fetch result with keys: url, success, html, error, error_type
+            HTML content as string, or None if fetch failed
+            
+        Raises:
+            FetchError: Base class for all fetch-related errors
+            TimeoutError: When navigation times out
+            NavigationError: When navigation fails
+            CaptchaError: When captcha is detected
+            ProxyError: When proxy connection fails
         """
-        result = {
-            "url": url,
-            "success": False,
-            "html": None,
-            "error": None,
-            "error_type": None
-        }
-        
         context = None
         page = None
         
@@ -298,44 +297,25 @@ class StealthBrowserToolkit:
                 self.logger.warning("Captcha detected", url=url, content_length=len(content))
                 raise CaptchaError("Captcha detected on the page")
             
-            # Set successful result
-            result["html"] = content
-            result["success"] = True
-            
             self.logger.info(
                 "Successfully fetched URL", 
                 url=url, 
                 content_length=len(content),
                 status_code=response.status
             )
-            return result
-            
-        except FetchError as e:
-            error_message = str(e)
-            error_type = e.__class__.__name__
-            self.logger.error(
-                "Fetch error", 
-                url=url, 
-                error_type=error_type, 
-                error=error_message,
-                exception_class=e.__class__.__name__
-            )
-            result["error"] = error_message
-            result["error_type"] = error_type
-            return result
+            return content
             
         except Exception as e:
-            error_message = str(e)
-            self.logger.error(
-                "Unexpected error fetching URL", 
-                url=url, 
-                error=error_message,
-                exception_class=e.__class__.__name__,
-                exception_type=type(e).__name__
-            )
-            result["error"] = error_message
-            result["error_type"] = "UnexpectedError"
-            return result
+            # Categorize and re-raise specific errors
+            error_str = str(e).lower()
+            if "timeout" in error_str:
+                raise TimeoutError(f"Navigation timed out: {e}") from e
+            if "proxy" in error_str:
+                raise ProxyError(f"Proxy connection failed: {e}") from e
+            if isinstance(e, (NavigationError, CaptchaError)):
+                raise e  # Re-raise our own custom errors
+            # Fallback for other playwright errors
+            raise NavigationError(f"Navigation failed: {e}") from e
             
         finally:
             # Clean up resources

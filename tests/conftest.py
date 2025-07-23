@@ -18,6 +18,7 @@ Version: 1.0.0
 """
 
 import pytest
+import pytest_asyncio
 import asyncio
 import uuid
 from datetime import datetime
@@ -50,7 +51,7 @@ def test_client():
     return TestClient(app)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def async_client():
     """
     Create an async test client for the FastAPI app.
@@ -58,7 +59,12 @@ async def async_client():
     Returns:
         AsyncClient: Async HTTP client for testing
     """
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    from httpx import AsyncClient, ASGITransport
+    
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test"
+    ) as client:
         yield client
 
 

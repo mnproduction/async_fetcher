@@ -208,12 +208,8 @@ def custom_openapi():
     # Add server information
     openapi_schema["servers"] = [
         {
-            "url": "http://localhost:8000",
-            "description": "Development server"
-        },
-        {
-            "url": "https://api.example.com",
-            "description": "Production server"
+            "url": "/",
+            "description": "Current server"
         }
     ]
     
@@ -322,7 +318,7 @@ async def log_requests(request: Request, call_next):
     user_agent = request.headers.get("user-agent")
     
     # Bind request context for all subsequent logs in this request
-    log_request_context(request_id, user_agent)
+    log_request_context(request_id, user_agent=user_agent)
     
     # Record request start time
     start_time = time.time()
@@ -588,7 +584,7 @@ This endpoint is rate limited to:
 ## Example Usage
 
 ```bash
-curl -X POST "http://localhost:8000/fetch/start" \\
+curl -X POST "/fetch/start" \\
      -H "Content-Type: application/json" \\
      -d '{
        "links": ["https://example.com", "https://httpbin.org/html"],
@@ -604,7 +600,8 @@ curl -X POST "http://localhost:8000/fetch/start" \\
 )
 async def start_fetch(
     request: FetchRequest, 
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    http_request: Request
 ):
     """
     Start a new fetch job with comprehensive validation and sanitization.
@@ -639,9 +636,8 @@ async def start_fetch(
         # Note: The FetchRequest model already validates and sanitizes all inputs
         job_id = create_job(request)
         
-        # Construct the status URL for job tracking
-        # Note: In production, this should use the actual base URL
-        status_url = f"http://localhost:8000/fetch/status/{job_id}"
+        # Construct the status URL for job tracking using FastAPI's URL builder
+        status_url = http_request.url_for('get_job_status', job_id=job_id)
         
         # Schedule the job to run in the background
         background_tasks.add_task(run_fetching_job, job_id)
@@ -655,7 +651,7 @@ async def start_fetch(
         # Return the job ID and status URL
         return JobStatusResponse(
             job_id=job_id,
-            status_url=status_url
+            status_url=str(status_url)  # Convert URL object to string
         )
         
     except ValueError as e:
@@ -686,6 +682,7 @@ async def start_fetch(
     "/fetch/status/{job_id}", 
     response_model=FetchResponse,
     tags=["fetch"],
+    name="get_job_status",
     summary="Get Fetch Job Status",
     description="""Check the status and results of a previously submitted fetch job.
 
@@ -767,7 +764,7 @@ This endpoint is rate limited to:
 ## Example Usage
 
 ```bash
-curl -X GET "http://localhost:8000/fetch/status/123e4567-e89b-12d3-a456-426614174000"
+curl -X GET "/fetch/status/123e4567-e89b-12d3-a456-426614174000"
 ```
 
 ## Polling Strategy

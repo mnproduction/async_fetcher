@@ -10,8 +10,19 @@ dependencies = [
     "patchright>=1.52.5",
     "pydantic>=2.11.7",
     "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
     "python-dotenv>=1.1.1",
     "ruff>=0.12.4",
     "structlog>=25.4.0",
     "uvicorn[standard]>=0.35.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "freezegun>=1.4.0",
+]
+
+[dependency-groups]
+dev = [
+    "freezegun>=1.5.3",
 ]

@@ -28,7 +28,7 @@ from typing import Dict, List, Optional, Any, Union
 from settings.logger import get_logger
 from settings.performance_metrics import record_fetch_duration, record_job_duration
 from api.models import FetchRequest, FetchResponse, FetchResult, JobStatusResponse
-from toolkit.browser import StealthBrowserToolkit
+from toolkit.browser import StealthBrowserToolkit, FetchError, TimeoutError, NavigationError, CaptchaError, ProxyError
 
 # Initialize logger for this module
 logger = get_logger("api.logic")
@@ -627,85 +627,99 @@ async def fetch_single_url_with_semaphore(
             
             try:
                 # Use the StealthBrowserToolkit to fetch the URL
-                async with StealthBrowserToolkit(headless=True) as browser:
-                    result = await browser.fetch_url(url, proxy, wait_time)
-                
-                # Validate the result structure
-                if not isinstance(result, dict):
-                    raise ValueError(f"Invalid result type: {type(result)}")
-                
-                if "success" not in result:
-                    raise ValueError("Result missing 'success' field")
-                
-                # Calculate response time
-                end_time = datetime.utcnow()
-                response_time_ms = int((end_time - start_time).total_seconds() * 1000)
-                
-                # Record performance metrics
-                record_fetch_duration(
-                    duration_ms=response_time_ms,
-                    success=result["success"],
-                    error_type=result.get("error_type") if not result["success"] else None
-                )
-                
-                # If successful or this is the last attempt, return the result
-                if result["success"] or attempt == retry_count:
-                    # Log the final result
-                    if result["success"]:
-                        logger.info(
-                            "Fetch completed successfully",
-                            url=url,
-                            proxy=proxy,
-                            response_time_ms=response_time_ms,
-                            status_code=result.get("status_code"),
-                            attempt=attempt + 1,
-                            max_attempts=retry_count + 1
-                        )
-                        return FetchResult(
-                            url=url,
-                            status="success",
-                            html_content=result["html"],
-                            response_time_ms=response_time_ms,
-                            status_code=result.get("status_code")
-                        )
-                    else:
-                        logger.error(
-                            "Fetch failed after all attempts",
-                            url=url,
-                            proxy=proxy,
-                            error=result["error"],
-                            response_time_ms=response_time_ms,
-                            status_code=result.get("status_code"),
-                            attempts=retry_count + 1
-                        )
+                toolkit = StealthBrowserToolkit(headless=True)
+                try:
+                    if not await toolkit.initialize():
+                        raise RuntimeError("Failed to initialize browser.")
+                    
+                    html = await toolkit.get_page_content(url, proxy, wait_time)
+                    # If we get here, it was successful
+                    
+                    # Calculate response time
+                    end_time = datetime.utcnow()
+                    response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+                    
+                    # Record performance metrics
+                    record_fetch_duration(
+                        duration_ms=response_time_ms,
+                        success=True,
+                        error_type=None
+                    )
+                    
+                    logger.info(
+                        "Fetch completed successfully",
+                        url=url,
+                        proxy=proxy,
+                        response_time_ms=response_time_ms,
+                        attempt=attempt + 1,
+                        max_attempts=retry_count + 1
+                    )
+                    return FetchResult(
+                        url=url,
+                        status="success",
+                        html_content=html,
+                        response_time_ms=response_time_ms
+                    )
+                    
+                except FetchError as e:
+                    # Catch our specific, categorized errors
+                    # Calculate response time for failed requests
+                    end_time = datetime.utcnow()
+                    response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+                    
+                    # Record performance metrics
+                    record_fetch_duration(
+                        duration_ms=response_time_ms,
+                        success=False,
+                        error_type=type(e).__name__
+                    )
+                    
+                    logger.warning(
+                        "Fetch failed with specific error",
+                        url=url,
+                        proxy=proxy,
+                        error_type=type(e).__name__,
+                        error=str(e),
+                        response_time_ms=response_time_ms,
+                        attempt=attempt + 1,
+                        max_attempts=retry_count + 1
+                    )
+                    
+                    # If this is the last attempt, return the error result
+                    if attempt == retry_count:
                         return FetchResult(
                             url=url,
                             status="error",
-                            error_message=result["error"],
-                            error_type=result.get("error_type"),
-                            response_time_ms=response_time_ms,
-                            status_code=result.get("status_code")
+                            error_message=str(e),
+                            error_type=type(e).__name__,
+                            response_time_ms=response_time_ms
                         )
+                    
+                    # Otherwise, continue to the next attempt
+                    logger.info(
+                        "Fetch failed, retrying with different proxy",
+                        url=url,
+                        error=str(e),
+                        attempt=attempt + 1,
+                        max_attempts=retry_count + 1
+                    )
+                    
+                    # Wait before retrying with exponential backoff
+                    retry_wait = wait_time * (2 ** attempt)  # Exponential backoff
+                    logger.info(
+                        "Waiting before retry",
+                        url=url,
+                        wait_time=retry_wait,
+                        attempt=attempt + 1,
+                        max_attempts=retry_count + 1
+                    )
+                    await asyncio.sleep(retry_wait)
+                    continue
+                    
+                finally:
+                    await toolkit.close()
                 
-                # If we get here, the fetch failed but we have more retries
-                logger.warning(
-                    "Fetch failed, retrying with different proxy", 
-                    url=url, 
-                    error=result["error"],
-                    attempt=attempt + 1,
-                    max_attempts=retry_count + 1
-                )
-                
-                # Wait before retrying with exponential backoff
-                retry_wait = wait_time * (2 ** attempt)  # Exponential backoff
-                logger.info(
-                    "Waiting before retry",
-                    url=url,
-                    wait_time=retry_wait,
-                    attempt=attempt + 1,
-                    max_attempts=retry_count + 1
-                )
-                await asyncio.sleep(retry_wait)
+
             
             except Exception as e:
                 # Calculate response time for failed requests
