@@ -20,8 +20,11 @@ Version: 1.0.0
 import pytest
 import pytest_asyncio
 import asyncio
+import platform
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
+
+
 
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
@@ -281,12 +284,9 @@ def mock_browser():
         MagicMock: Mock browser object
     """
     mock = MagicMock()
-    mock.fetch = AsyncMock(return_value={
-        "status": "success",
-        "html": "<html><body>Test content</body></html>",
-        "response_time": 1000,
-        "status_code": 200
-    })
+    mock.initialize = AsyncMock(return_value=True)
+    mock.get_page_content = AsyncMock(return_value="<html><body>Test content</body></html>")
+    mock.close = AsyncMock()
     return mock
 
 
@@ -299,7 +299,9 @@ def mock_browser_error():
         MagicMock: Mock browser object that returns errors
     """
     mock = MagicMock()
-    mock.fetch = AsyncMock(side_effect=Exception("Browser error"))
+    mock.initialize = AsyncMock(return_value=True)
+    mock.get_page_content = AsyncMock(side_effect=Exception("Browser error"))
+    mock.close = AsyncMock()
     return mock
 
 

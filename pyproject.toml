@@ -21,6 +21,9 @@ dependencies = [
 test = [
     "freezegun>=1.4.0",
 ]
+windows = [
+    "winloop>=0.1.91",
+]
 
 [dependency-groups]
 dev = [

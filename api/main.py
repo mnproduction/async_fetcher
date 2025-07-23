@@ -1,3 +1,22 @@
+import platform
+import asyncio
+
+# Install the optimal event loop policy for the current OS BEFORE any other imports
+if platform.system() == "Windows":
+    try:
+        import winloop
+        winloop.install()
+        print("Winloop installed for Windows asyncio compatibility")
+    except ImportError:
+        print("winloop not found, using default event loop. For better performance on Windows, pip install winloop.")
+        # Fallback to Windows Proactor
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+        print("Using Windows Proactor event loop policy as fallback")
+    except Exception as e:
+        print(f"Failed to install winloop: {e}")
+        # Fallback to Windows Proactor
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+        print("Using Windows Proactor event loop policy as fallback")
 import time
 import uuid
 from fastapi import FastAPI, Request, BackgroundTasks, HTTPException, Path, Depends

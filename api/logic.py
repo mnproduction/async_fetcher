@@ -631,26 +631,9 @@ async def fetch_single_url_with_semaphore(
             
             try:
                 # Use browser pool for better performance
-                html = None
-                try:
-                    pool = await get_browser_pool()
-                    async with pool.get_browser() as toolkit:
-                        html = await toolkit.get_page_content(url, proxy, wait_time)
-                except Exception as pool_error:
-                    # Fallback to direct browser creation if pool fails
-                    logger.warning(
-                        "Browser pool failed, falling back to direct browser creation",
-                        error=str(pool_error),
-                        url=url
-                    )
-                    toolkit = StealthBrowserToolkit(headless=True)
-                    try:
-                        if not await toolkit.initialize():
-                            raise RuntimeError("Failed to initialize browser.")
-
-                        html = await toolkit.get_page_content(url, proxy, wait_time)
-                    finally:
-                        await toolkit.close()
+                pool = await get_browser_pool()
+                async with pool.get_browser() as toolkit:
+                    html = await toolkit.get_page_content(url, proxy, wait_time)
 
                 # If we get here, it was successful
                 # Calculate response time

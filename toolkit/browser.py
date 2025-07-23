@@ -8,6 +8,8 @@ from settings.logger import get_logger
 from patchright.async_api import async_playwright
 
 
+
+
 # =============================================================================
 # CUSTOM ERROR CLASSES FOR FETCH OPERATIONS
 # =============================================================================
@@ -112,17 +114,8 @@ class StealthBrowserToolkit:
         self.logger.info("Initializing stealth browser", headless=self.headless)
 
         try:
-            # Fix Windows asyncio event loop policy issue
-            if platform.system() == "Windows":
-                # Set the event loop policy to WindowsProactorEventLoopPolicy
-                # This fixes subprocess creation issues on Windows
-                if isinstance(asyncio.get_event_loop_policy(), asyncio.WindowsProactorEventLoopPolicy):
-                    pass  # Already using the correct policy
-                else:
-                    self.logger.debug("Setting Windows event loop policy for subprocess support")
-                    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-
             # Initialize patchright using its async API
+            # Note: Windows event loop policy is set globally in main.py
             self.logger.debug("Starting patchright instance")
             self._playwright = await async_playwright().start()
 
