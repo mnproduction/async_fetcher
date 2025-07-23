@@ -23,7 +23,7 @@ import asyncio
 import random
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 from settings.logger import get_logger
 from api.models import FetchRequest, FetchResponse, FetchResult, JobStatusResponse
@@ -287,21 +287,21 @@ def update_job_status(job_id: str, status: str, error_message: Optional[str] = N
     return True
 
 
-def add_job_result(job_id: str, result: FetchResult) -> bool:
+def add_job_result(job_id: str, result: Union[FetchResult, Dict[str, Any]]) -> bool:
     """
     Add a result to a job and update completion counters.
-    
+
     This function adds a new fetch result to the job and automatically
     updates the completion counter. It also checks if the job should be
     marked as completed when all URLs have been processed.
-    
+
     Args:
         job_id: Unique job identifier
-        result: FetchResult object containing the fetch outcome
-        
+        result: FetchResult object or dict containing the fetch outcome
+
     Returns:
         bool: True if result was added successfully, False if job not found
-        
+
     Example:
         ```python
         result = FetchResult(
@@ -313,13 +313,18 @@ def add_job_result(job_id: str, result: FetchResult) -> bool:
         ```
     """
     if job_id not in jobs:
-        logger.warning("Cannot add result - job not found", job_id=job_id, url=result.url)
+        # Handle both FetchResult objects and dicts
+        url = result.url if hasattr(result, 'url') else result.get('url', 'unknown')
+        logger.warning("Cannot add result - job not found", job_id=job_id, url=url)
         return False
     
     job = jobs[job_id]
     
     # Serialize result for storage
-    result_data = result.model_dump()
+    if isinstance(result, FetchResult):
+        result_data = result.model_dump()
+    else:
+        result_data = result
     
     # Add result to job
     job["results"].append(result_data)
@@ -335,15 +340,19 @@ def add_job_result(job_id: str, result: FetchResult) -> bool:
         if job["status"] == "pending":
             update_job_status(job_id, "in_progress")
     
-    logger.info(
-        "Added job result",
-        job_id=job_id,
-        url=result.url,
-        status=result.status,
-        completed_urls=job["completed_urls"],
-        total_urls=job["total_urls"],
-        progress_percentage=round((job["completed_urls"] / job["total_urls"]) * 100, 1)
-    )
+            # Get URL and status for logging
+        url = result.url if hasattr(result, 'url') else result.get('url', 'unknown')
+        status = result.status if hasattr(result, 'status') else result.get('status', 'unknown')
+        
+        logger.info(
+            "Added job result",
+            job_id=job_id,
+            url=url,
+            status=status,
+            completed_urls=job["completed_urls"],
+            total_urls=job["total_urls"],
+            progress_percentage=round((job["completed_urls"] / job["total_urls"]) * 100, 1)
+        )
     
     return True
 
