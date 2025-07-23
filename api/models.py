@@ -20,10 +20,55 @@ Author: Async HTML Fetcher Service
 Version: 1.0.0
 """
 
+import re
+import uuid
 from datetime import datetime
 from typing import List, Optional, Literal
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, HttpUrl, AnyHttpUrl
+
+# Import sanitization functions
+from .sanitization import (
+    sanitize_url, sanitize_proxy_url, sanitize_html_content, 
+    sanitize_error_message, sanitize_uuid, sanitize_url_list, 
+    sanitize_proxy_list
+)
+
+
+# =============================================================================
+# VALIDATION UTILITIES
+# =============================================================================
+
+def validate_uuid_format(value: str) -> str:
+    """
+    Validate UUID format for job IDs.
+    
+    Args:
+        value: String to validate as UUID
+        
+    Returns:
+        str: Validated UUID string
+        
+    Raises:
+        ValueError: If value is not a valid UUID format
+    """
+    return sanitize_uuid(value)
+
+def validate_proxy_url(proxy: str) -> str:
+    """
+    Validate proxy URL format with enhanced security checks.
+    
+    Args:
+        proxy: Proxy URL string
+        
+    Returns:
+        str: Validated proxy URL
+        
+    Raises:
+        ValueError: If proxy URL is invalid
+    """
+    return sanitize_proxy_url(proxy)
 
 
 # =============================================================================
@@ -44,10 +89,11 @@ class FetchOptions(BaseModel):
         concurrency_limit: Maximum concurrent browser instances (1-20)
     
     Validation:
-        - Proxy URLs must have valid protocol prefixes
+        - Proxy URLs must have valid protocol prefixes and format
         - Wait times have sensible bounds to prevent abuse
         - wait_max must be greater than or equal to wait_min
         - Concurrency is limited to prevent resource exhaustion
+        - Enhanced security checks for proxy URLs
     
     Example:
         ```python
@@ -62,6 +108,7 @@ class FetchOptions(BaseModel):
     
     proxies: List[str] = Field(
         default=[], 
+        max_length=50,  # Limit number of proxies to prevent abuse
         description="List of proxy URLs to use for fetching (format: http://user:pass@host:port)"
     )
     wait_min: int = Field(
@@ -100,15 +147,12 @@ class FetchOptions(BaseModel):
     @classmethod
     def validate_proxies(cls, v):
         """
-        Validate proxy URL format for supported protocols.
+        Validate proxy URL format for supported protocols with enhanced security.
         
-        Ensures all proxy URLs start with supported protocol schemes
-        to prevent runtime connection errors.
+        Ensures all proxy URLs have valid format and pass security checks
+        to prevent runtime connection errors and potential attacks.
         """
-        for proxy in v:
-            if not proxy.startswith(('http://', 'https://', 'socks4://', 'socks5://')):
-                raise ValueError(f'Proxy URL must start with http://, https://, socks4://, or socks5://: {proxy}')
-        return v
+        return sanitize_proxy_list(v)
 
 
 # =============================================================================
@@ -129,7 +173,8 @@ class FetchRequest(BaseModel):
     Validation:
         - URL count limited to prevent abuse (1-1000 URLs)
         - Duplicate URL detection to avoid redundant work
-        - URL format validation (HTTP/HTTPS only)
+        - URL format validation and sanitization (HTTP/HTTPS only)
+        - Enhanced security checks for URLs
         - Integration with FetchOptions validation
     
     Example:
@@ -156,27 +201,12 @@ class FetchRequest(BaseModel):
     @classmethod
     def validate_links(cls, v):
         """
-        Validate URLs and detect duplicates.
+        Validate URLs and detect duplicates with enhanced security.
         
-        Ensures all URLs are properly formatted and removes duplicate
+        Ensures all URLs are properly formatted, sanitized, and removes duplicate
         processing by detecting identical URLs in the request.
         """
-        validated_links = []
-        seen_links = set()
-        
-        for link in v:
-            # Check URL format - only HTTP/HTTPS supported
-            if not link.startswith(('http://', 'https://')):
-                raise ValueError(f'URL must start with http:// or https://: {link}')
-            
-            # Check for duplicates to avoid redundant processing
-            if link in seen_links:
-                raise ValueError(f'Duplicate URL found: {link}')
-            
-            seen_links.add(link)
-            validated_links.append(link)
-        
-        return validated_links
+        return sanitize_url_list(v)
 
 
 class JobStatusResponse(BaseModel):
@@ -191,9 +221,10 @@ class JobStatusResponse(BaseModel):
         status_url: Complete URL for checking job progress
     
     Validation:
-        - job_id format validation for security
-        - status_url format validation
+        - job_id format validation for security (UUID format)
+        - status_url format validation (HTTP/HTTPS URL)
         - Length constraints to prevent abuse
+        - Enhanced security checks
     
     Example:
         ```python
@@ -206,12 +237,13 @@ class JobStatusResponse(BaseModel):
     
     job_id: str = Field(
         ..., 
-        min_length=1,
-        max_length=100,
-        description="Unique job identifier (UUID format recommended)"
+        min_length=36,  # UUID length
+        max_length=36,  # UUID length
+        description="Unique job identifier (UUID format)"
     )
     status_url: str = Field(
         ..., 
+        max_length=500,  # Reasonable URL length limit
         description="Complete URL to check job status"
     )
     
@@ -221,25 +253,21 @@ class JobStatusResponse(BaseModel):
         """
         Validate job_id format for security.
         
-        Ensures job IDs contain only safe characters to prevent
+        Ensures job IDs are valid UUIDs to prevent
         injection attacks and maintain URL safety.
         """
-        if not v.replace('-', '').replace('_', '').isalnum():
-            raise ValueError('job_id must contain only alphanumeric characters, hyphens, and underscores')
-        return v
+        return sanitize_uuid(v)
     
     @field_validator('status_url')
     @classmethod
     def validate_status_url(cls, v):
         """
-        Validate status URL format.
+        Validate status URL format with enhanced security.
         
         Ensures the status URL is a proper HTTP/HTTPS URL that
         clients can use to check job progress.
         """
-        if not v.startswith(('http://', 'https://')):
-            raise ValueError('status_url must be a valid HTTP/HTTPS URL')
-        return v
+        return sanitize_url(v, max_length=500)
 
 
 # =============================================================================
@@ -263,9 +291,10 @@ class FetchResult(BaseModel):
     
     Validation:
         - Status-dependent field validation (content vs errors)
-        - URL format validation
+        - URL format validation and sanitization
         - HTTP status code range validation
         - Cross-field logical consistency
+        - Enhanced security checks
     
     Example:
         ```python
@@ -289,6 +318,7 @@ class FetchResult(BaseModel):
     
     url: str = Field(
         ..., 
+        max_length=2000,  # URL length limit
         description="The URL that was fetched"
     )
     status: Literal["success", "error"] = Field(
@@ -297,15 +327,18 @@ class FetchResult(BaseModel):
     )
     html_content: Optional[str] = Field(
         None, 
+        max_length=10_000_000,  # 10MB limit for HTML content
         description="The complete HTML content of the fetched page (only present on success)"
     )
     error_message: Optional[str] = Field(
         None, 
+        max_length=1000,  # Reasonable error message length
         description="Detailed error message explaining the failure (only present on error)"
     )
     response_time_ms: Optional[int] = Field(
         None,
         ge=0,
+        le=300_000,  # 5 minutes max response time
         description="Response time in milliseconds for the fetch operation"
     )
     status_code: Optional[int] = Field(
@@ -318,10 +351,8 @@ class FetchResult(BaseModel):
     @field_validator('url')
     @classmethod
     def validate_url(cls, v):
-        """Validate URL format consistency."""
-        if not v.startswith(('http://', 'https://')):
-            raise ValueError('URL must start with http:// or https://')
-        return v
+        """Validate URL format consistency with enhanced security."""
+        return sanitize_url(v, max_length=2000)
     
     @field_validator('html_content')
     @classmethod
@@ -329,6 +360,11 @@ class FetchResult(BaseModel):
         """Ensure html_content is only present with success status."""
         if v is not None and info.data.get('status') == 'error':
             raise ValueError('html_content should be None for error status')
+        
+        # Sanitize HTML content if present
+        if v is not None:
+            return sanitize_html_content(v)
+        
         return v
     
     @field_validator('error_message')
@@ -339,6 +375,11 @@ class FetchResult(BaseModel):
             raise ValueError('error_message should be None for success status')
         if info.data.get('status') == 'error' and not v:
             raise ValueError('error_message is required for error status')
+        
+        # Sanitize error message if present
+        if v is not None:
+            return sanitize_error_message(v)
+        
         return v
 
 
@@ -367,6 +408,7 @@ class FetchResponse(BaseModel):
         - Results count matches completed count
         - Timestamp logic for job lifecycle
         - Status-dependent field validation
+        - Enhanced security checks
     
     Example:
         ```python
@@ -387,6 +429,8 @@ class FetchResponse(BaseModel):
     
     job_id: str = Field(
         ..., 
+        min_length=36,  # UUID length
+        max_length=36,  # UUID length
         description="Unique job identifier"
     )
     status: Literal["pending", "in_progress", "completed", "failed"] = Field(
@@ -395,16 +439,19 @@ class FetchResponse(BaseModel):
     )
     results: List[FetchResult] = Field(
         default=[], 
+        max_length=1000,  # Match max URLs limit
         description="List of individual fetch results (populated as URLs are processed)"
     )
     total_urls: int = Field(
         ..., 
         ge=1,
+        le=1000,  # Match max URLs limit
         description="Total number of URLs in this job"
     )
     completed_urls: int = Field(
         ..., 
         ge=0,
+        le=1000,  # Match max URLs limit
         description="Number of URLs that have been processed (success or error)"
     )
     started_at: Optional[datetime] = Field(
@@ -415,6 +462,12 @@ class FetchResponse(BaseModel):
         None,
         description="Timestamp when job completed (success or failure)"
     )
+    
+    @field_validator('job_id')
+    @classmethod
+    def validate_job_id(cls, v):
+        """Validate job_id format for security."""
+        return sanitize_uuid(v)
     
     @field_validator('completed_urls')
     @classmethod
@@ -438,6 +491,12 @@ class FetchResponse(BaseModel):
         """Ensure completion timestamp follows lifecycle rules."""
         if v is not None and info.data.get('status') not in ['completed', 'failed']:
             raise ValueError('completed_at should only be set for completed or failed jobs')
+        
+        # Ensure completed_at is after started_at if both exist
+        if v is not None and 'started_at' in info.data and info.data['started_at'] is not None:
+            if v <= info.data['started_at']:
+                raise ValueError('completed_at must be after started_at')
+        
         return v
     
     @property
@@ -472,5 +531,7 @@ __all__ = [
     'FetchRequest', 
     'JobStatusResponse',
     'FetchResult',
-    'FetchResponse'
+    'FetchResponse',
+    'validate_uuid_format',
+    'validate_proxy_url'
 ] 
