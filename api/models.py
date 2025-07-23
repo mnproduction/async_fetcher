@@ -22,7 +22,6 @@ Version: 1.0.0
 
 from datetime import datetime
 from typing import List, Optional, Literal
-import uuid
 
 from pydantic import BaseModel, Field, field_validator
 

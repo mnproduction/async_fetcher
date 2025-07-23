@@ -1,4 +1,3 @@
-import sys
 import structlog
 
 def setup_logger():

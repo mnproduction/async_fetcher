@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import models to verify they work correctly
-from .models import FetchRequest, FetchResponse, JobStatusResponse, FetchResult, FetchOptions
 
 # Import and test structured logger
 from settings.logger import get_logger
