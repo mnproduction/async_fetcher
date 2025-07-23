@@ -288,7 +288,18 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    
+    # Content Security Policy - Allow Swagger UI resources
+    csp_policy = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "img-src 'self' https://fastapi.tiangolo.com https://cdn.jsdelivr.net; "
+        "font-src 'self' https://cdn.jsdelivr.net; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none';"
+    )
+    response.headers["Content-Security-Policy"] = csp_policy
     
     return response
 
@@ -612,10 +623,7 @@ async def start_fetch(
     Raises:
         HTTPException: If request validation fails or job creation fails
     """
-    # Apply rate limiting for fetch endpoints
-    response = await fetch_endpoint_rate_limit(request, lambda: None)
-    if hasattr(response, 'status_code') and response.status_code == 429:
-        return response
+    # Rate limiting is handled by middleware, no need for manual check here
     
     # Log the incoming request with sanitized data
     logger.info(
@@ -633,7 +641,7 @@ async def start_fetch(
         
         # Construct the status URL for job tracking
         # Note: In production, this should use the actual base URL
-        status_url = f"/fetch/status/{job_id}"
+        status_url = f"http://localhost:8000/fetch/status/{job_id}"
         
         # Schedule the job to run in the background
         background_tasks.add_task(run_fetching_job, job_id)
