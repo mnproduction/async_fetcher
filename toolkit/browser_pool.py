@@ -107,13 +107,19 @@ class BrowserPool:
         logger.info("Browser pool stopped")
     
     @asynccontextmanager
-    async def get_browser(self):
+    async def get_browser(self, proxy: Optional[Dict[str, str]] = None):
         """
         Get a browser instance from the pool.
-        
+
+        Args:
+            proxy: Optional proxy configuration dict with 'server' key
+
         Returns:
             Context manager yielding a StealthBrowserToolkit instance
         """
+        # For now, we'll ignore proxy configuration since browsers in the pool
+        # are pre-initialized. In a future enhancement, we could create separate
+        # pools for different proxy configurations or implement proxy switching.
         instance = await self._acquire_browser()
         try:
             yield instance.toolkit

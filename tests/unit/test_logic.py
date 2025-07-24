@@ -22,8 +22,8 @@ from unittest.mock import patch, MagicMock
 from freezegun import freeze_time
 
 from api.logic import (
-    jobs, create_job, get_job_status, update_job_status, 
-    add_job_result, run_fetching_job, fetch_single_url_with_semaphore
+    jobs, create_job, get_job_status, update_job_status,
+    add_job_result, run_fetching_job, fetch_single_url_with_pool
 )
 
 
@@ -302,11 +302,14 @@ class TestFetchingLogic:
     """Test fetching logic functions."""
     
     @pytest.mark.asyncio
-    async def test_fetch_single_url_with_semaphore_success(self, mock_browser):
-        """Test successful single URL fetch."""
-        # Mock the StealthBrowserToolkit class
-        with patch('api.logic.StealthBrowserToolkit', return_value=mock_browser):
-            result = await fetch_single_url_with_semaphore(
+    async def test_fetch_single_url_with_pool_success(self, mock_browser):
+        """Test successful single URL fetch using browser pool."""
+        # Mock the browser pool
+        mock_pool = MagicMock()
+        mock_pool.get_browser.return_value.__aenter__.return_value = mock_browser
+
+        with patch('api.logic.get_browser_pool', return_value=mock_pool):
+            result = await fetch_single_url_with_pool(
                 url="https://example.com",
                 semaphore=MagicMock(),
                 proxies=["http://proxy.example.com:8080"],
@@ -324,15 +327,14 @@ class TestFetchingLogic:
         assert result.error_message is None
     
     @pytest.mark.asyncio
-    async def test_fetch_single_url_with_semaphore_error(self, mock_browser_error):
-        """Test single URL fetch with error."""
-        # Mock the browser pool to fail, forcing fallback to direct browser
+    async def test_fetch_single_url_with_pool_error(self, mock_browser_error):
+        """Test single URL fetch with error using browser pool."""
+        # Mock the browser pool to return a browser that fails
         mock_pool = MagicMock()
         mock_pool.get_browser.side_effect = Exception("Pool error")
-        
+
         with patch('api.logic.get_browser_pool', return_value=mock_pool):
-            with patch('api.logic.StealthBrowserToolkit', return_value=mock_browser_error):
-                result = await fetch_single_url_with_semaphore(
+            result = await fetch_single_url_with_pool(
                     url="https://broken.com",
                     semaphore=MagicMock(),
                     proxies=[],
@@ -349,11 +351,14 @@ class TestFetchingLogic:
         assert result.status_code is None
     
     @pytest.mark.asyncio
-    async def test_fetch_single_url_with_semaphore_no_proxies(self, mock_browser):
-        """Test single URL fetch without proxies."""
-        # Mock the StealthBrowserToolkit class
-        with patch('api.logic.StealthBrowserToolkit', return_value=mock_browser):
-            result = await fetch_single_url_with_semaphore(
+    async def test_fetch_single_url_with_pool_no_proxies(self, mock_browser):
+        """Test single URL fetch without proxies using browser pool."""
+        # Mock the browser pool
+        mock_pool = MagicMock()
+        mock_pool.get_browser.return_value.__aenter__.return_value = mock_browser
+
+        with patch('api.logic.get_browser_pool', return_value=mock_pool):
+            result = await fetch_single_url_with_pool(
                 url="https://example.com",
                 semaphore=MagicMock(),
                 proxies=[],

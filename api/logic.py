@@ -28,7 +28,7 @@ from typing import Dict, List, Optional, Any, Union
 from settings.logger import get_logger
 from settings.performance_metrics import record_fetch_duration, record_job_duration
 from api.models import FetchRequest, FetchResponse, FetchResult
-from toolkit.browser import StealthBrowserToolkit, FetchError
+from toolkit.browser import FetchError
 from toolkit.browser_pool import get_browser_pool
 
 # Initialize logger for this module
@@ -565,7 +565,7 @@ def select_random_proxy(proxies: List[str]) -> Optional[str]:
 # FETCHING FUNCTIONS
 # =============================================================================
 
-async def fetch_single_url_with_semaphore(
+async def fetch_single_url_with_pool(
     url: str,
     semaphore: asyncio.Semaphore,
     proxies: List[str],
@@ -574,13 +574,12 @@ async def fetch_single_url_with_semaphore(
     retry_count: int = 1
 ) -> FetchResult:
     """
-    Fetch a single URL with semaphore-controlled concurrency and proxy rotation.
-    
-    This function acquires a semaphore to limit concurrent fetches, selects
-    a random proxy for each attempt, waits for a random interval, and fetches
-    the URL using the StealthBrowserToolkit. It includes retry logic with
-    different proxies for each attempt.
-    
+    Fetch a single URL using the browser pool for improved performance.
+
+    This function acquires a semaphore to limit concurrent fetches, gets a browser
+    from the pool, selects a random proxy for each attempt, and fetches the URL.
+    It includes retry logic with different proxies for each attempt.
+
     Args:
         url: The URL to fetch
         semaphore: asyncio.Semaphore to control concurrency
@@ -588,19 +587,23 @@ async def fetch_single_url_with_semaphore(
         wait_min: Minimum wait time in seconds
         wait_max: Maximum wait time in seconds
         retry_count: Number of retry attempts (default: 1)
-        
+
     Returns:
         FetchResult: The result of the fetch operation
-        
+
     Example:
         ```python
         semaphore = asyncio.Semaphore(5)
-        result = await fetch_single_url_with_semaphore(
+        result = await fetch_single_url_with_pool(
             "https://example.com", semaphore, ["http://proxy1:8080"], 1, 3, 2
         )
         ```
     """
     async with semaphore:
+        # Get the browser pool
+        browser_pool = await get_browser_pool()
+        logger.info("Browser pool acquired for fetch", pool_size=len(browser_pool._pool))
+
         # Initialize proxy variable
         proxy = None
 
@@ -615,32 +618,44 @@ async def fetch_single_url_with_semaphore(
                 proxy = select_random_proxy(available_proxies) if available_proxies else select_random_proxy(proxies)
             else:
                 proxy = select_random_proxy(proxies)
-            
+
             # Calculate random wait time within range
             wait_time = random.randint(wait_min, wait_max)
-            
+
             logger.info(
-                "Fetching URL with semaphore", 
-                url=url, 
-                proxy=proxy, 
+                "Fetching URL with browser pool",
+                url=url,
+                proxy=proxy,
                 wait_time=wait_time,
                 attempt=attempt + 1,
                 max_attempts=retry_count + 1
             )
-            
+
             start_time = datetime.now(timezone.utc)
-            
+
             try:
-                # Create stealth browser toolkit with proxy configuration
+                # Get a browser from the pool
+                # Note: Proxy configuration is passed but not currently used by the pool
+                # This is a limitation that could be addressed in future enhancements
                 proxy_config = {"server": proxy} if proxy else None
-                toolkit = StealthBrowserToolkit(
-                    headless=True,
-                    proxy=proxy_config,
-                    wait_min=wait_time,
-                    wait_max=wait_time + 2
-                )
-                try:
-                    html = await toolkit.get_page_content(url)
+                logger.info("Attempting to get browser from pool", url=url, attempt=attempt + 1)
+                async with browser_pool.get_browser(proxy=proxy_config) as browser:
+                    logger.info("Browser acquired from pool successfully", url=url)
+                    # Add a small wait before fetching
+                    if wait_time > 0:
+                        await asyncio.sleep(wait_time)
+
+                    # Add timeout wrapper to prevent hanging
+                    logger.info("Starting browser fetch with timeout", url=url, timeout_seconds=90)
+                    try:
+                        html = await asyncio.wait_for(
+                            browser.get_page_content(url),
+                            timeout=90.0  # 90 second timeout
+                        )
+                        logger.info("Browser fetch completed successfully", url=url)
+                    except asyncio.TimeoutError:
+                        logger.error("Browser fetch timed out", url=url, timeout_seconds=90)
+                        raise FetchError(f"Browser fetch timed out after 90 seconds for {url}")
 
                     # If we get here, it was successful
                     # Calculate response time
@@ -655,7 +670,7 @@ async def fetch_single_url_with_semaphore(
                     )
 
                     logger.info(
-                        "Fetch completed successfully",
+                        "Fetch completed successfully using browser pool",
                         url=url,
                         proxy=proxy,
                         response_time_ms=response_time_ms,
@@ -668,9 +683,6 @@ async def fetch_single_url_with_semaphore(
                         html_content=html,
                         response_time_ms=response_time_ms
                     )
-                finally:
-                    # Always clean up the toolkit
-                    await toolkit.close()
 
             except FetchError as e:
                 # Catch our specific, categorized errors
@@ -794,6 +806,8 @@ async def run_fetching_job(job_id: str) -> None:
         asyncio.create_task(run_fetching_job("job123"))
         ```
     """
+    logger.info("Starting fetching job", job_id=job_id)
+
     if job_id not in jobs:
         logger.error("Job not found for processing", job_id=job_id)
         return
@@ -831,9 +845,9 @@ async def run_fetching_job(job_id: str) -> None:
         # Create a semaphore to limit concurrency
         semaphore = asyncio.Semaphore(concurrency_limit)
         
-        # Create tasks for each URL with retry logic
+        # Create tasks for each URL with retry logic using browser pool
         tasks = [
-            fetch_single_url_with_semaphore(url, semaphore, proxies, wait_min, wait_max, retry_count=retry_count)
+            fetch_single_url_with_pool(url, semaphore, proxies, wait_min, wait_max, retry_count=retry_count)
             for url in links
         ]
         
@@ -1058,6 +1072,6 @@ __all__ = [
     'cleanup_completed_jobs',
     'get_job_count',
     'is_job_finished',
-    'fetch_single_url_with_semaphore',
+    'fetch_single_url_with_pool',
     'run_fetching_job'
-] 
+]

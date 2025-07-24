@@ -1,22 +1,7 @@
+# Event loop policy should be set by the startup script (run_server.py)
+# before importing this module to ensure proper subprocess support on Windows.
 import platform
 import asyncio
-
-# Install the optimal event loop policy for the current OS BEFORE any other imports
-if platform.system() == "Windows":
-    try:
-        import winloop
-        winloop.install()
-        print("Winloop installed for Windows asyncio compatibility")
-    except ImportError:
-        print("winloop not found, using default event loop. For better performance on Windows, pip install winloop.")
-        # Fallback to Windows Proactor
-        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-        print("Using Windows Proactor event loop policy as fallback")
-    except Exception as e:
-        print(f"Failed to install winloop: {e}")
-        # Fallback to Windows Proactor
-        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-        print("Using Windows Proactor event loop policy as fallback")
 import time
 import uuid
 from fastapi import FastAPI, Request, BackgroundTasks, HTTPException, Path, Depends
@@ -1306,7 +1291,11 @@ async def root():
 # Event handlers have been moved to the lifespan function above
 
 
+# Note: For proper Windows subprocess support, use run_server.py instead of running this file directly
 if __name__ == "__main__":
+    print("WARNING: For proper Windows subprocess support, please use 'python run_server.py' instead.")
+    print("Running anyway with basic configuration...")
+
     import uvicorn
     logger.info(
         "Starting development server",
@@ -1315,4 +1304,4 @@ if __name__ == "__main__":
         reload=True,
         environment="development"
     )
-    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True) 
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)

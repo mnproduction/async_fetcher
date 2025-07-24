@@ -1,7 +1,11 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "async-fetcher"
 version = "0.1.0"
-description = "Add your description here"
+description = "A service for asynchronously fetching web content using stealth browsers"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -16,17 +20,48 @@ dependencies = [
     "structlog>=25.4.0",
     "uvicorn[standard]>=0.35.0",
     "fake-useragent>=1.4.0",
+    "uvloop>=0.20.0; sys_platform != 'win32'",
 ]
 
 [project.optional-dependencies]
 test = [
     "freezegun>=1.4.0",
-]
-windows = [
-    "winloop>=0.1.91",
+    "pytest-cov>=6.0.0",
 ]
 
 [dependency-groups]
 dev = [
     "freezegun>=1.5.3",
 ]
+
+[tool.setuptools.packages.find]
+include = ["api*", "toolkit*", "settings*"]
+
+[tool.pytest.ini_options]
+pythonpath = "."
+addopts = "-v"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+asyncio_mode = "strict"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning"
+]
+markers = [
+    "unit: Unit tests for individual components (fast, mocked)",
+    "integration: Integration tests for API endpoints (mocked dependencies)",
+    "e2e: End-to-end tests with real browser automation (slow)",
+    "slow: Tests that take longer to run",
+    "browser: Tests that require browser automation",
+    "fast: Tests that run quickly (under 1 second)",
+    "network: Tests that require network access",
+    "mock: Tests that use mocked dependencies"
+]
+
+# Fast test configuration (equivalent to pytest-fast.ini)
+# Run with: pytest -c pyproject.toml -m "not e2e and not slow" --cov=api --cov=toolkit --cov=settings --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=80
+
+# E2E test configuration (equivalent to pytest-e2e.ini)
+# Run with: pytest -c pyproject.toml -m "e2e" --tb=short
