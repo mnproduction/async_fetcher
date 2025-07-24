@@ -20,6 +20,7 @@ if platform.system() == "Windows":
 import time
 import uuid
 from fastapi import FastAPI, Request, BackgroundTasks, HTTPException, Path, Depends
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.openapi.utils import get_openapi
@@ -44,8 +45,65 @@ from settings.performance_metrics import get_performance_summary, get_error_rate
 # Initialize logger for this module
 logger = get_logger("api.main")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application lifespan manager.
+
+    Handles startup and shutdown events for the FastAPI application.
+    """
+    # Startup
+    logger.info(
+        "Async Web Fetching Service starting up",
+        version="1.0.0",
+        environment="production",
+        features=[
+            "stealth_browser",
+            "proxy_rotation",
+            "rate_limiting",
+            "job_management",
+            "performance_monitoring"
+        ]
+    )
+
+    try:
+        # Initialize browser pool for better performance
+        from toolkit.browser_pool import get_browser_pool
+        pool = await get_browser_pool()
+        stats = pool.get_stats()
+        logger.info(
+            "Browser pool initialized successfully",
+            **stats
+        )
+    except Exception as e:
+        logger.warning(
+            "Failed to initialize browser pool, will use direct browser creation",
+            error=str(e)
+        )
+
+    yield
+
+    # Shutdown
+    try:
+        from toolkit.browser_pool import shutdown_browser_pool
+        await shutdown_browser_pool()
+        logger.info("Browser pool shutdown successfully")
+    except Exception as e:
+        logger.warning(
+            "Error shutting down browser pool",
+            error=str(e)
+        )
+
+    logger.info(
+        "Async Web Fetching Service shutting down",
+        message="Application shutdown complete"
+    )
+
+
 app = FastAPI(
     title="Async Web Fetching Service",
+    lifespan=lifespan,
     description="""A service for asynchronously fetching web content using stealth browsers.
 
 ## Features
@@ -1245,59 +1303,7 @@ async def root():
     }
 
 
-@app.on_event("startup")
-async def startup_event():
-    """
-    Application startup event handler.
-
-    Logs application startup information and initialization status.
-    """
-    logger.info(
-        "FastAPI application starting up",
-        service="Async Web Fetching Service",
-        version="1.0.0",
-        docs_url="/docs",
-        redoc_url="/redoc"
-    )
-
-    # Initialize browser pool for better performance
-    try:
-        from toolkit.browser_pool import get_browser_pool
-        pool = await get_browser_pool()
-        stats = pool.get_stats()
-        logger.info(
-            "Browser pool initialized successfully",
-            **stats
-        )
-    except Exception as e:
-        logger.warning(
-            "Failed to initialize browser pool, will use direct browser creation",
-            error=str(e)
-        )
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """
-    Application shutdown event handler.
-
-    Logs application shutdown information for monitoring.
-    """
-    # Shutdown browser pool
-    try:
-        from toolkit.browser_pool import shutdown_browser_pool
-        await shutdown_browser_pool()
-        logger.info("Browser pool shutdown successfully")
-    except Exception as e:
-        logger.warning(
-            "Error shutting down browser pool",
-            error=str(e)
-        )
-
-    logger.info(
-        "FastAPI application shutting down",
-        service="Async Web Fetching Service"
-    )
+# Event handlers have been moved to the lifespan function above
 
 
 if __name__ == "__main__":

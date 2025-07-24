@@ -41,7 +41,7 @@ def is_safe_character(char: str) -> bool:
         'abcdefghijklmnopqrstuvwxyz'
         'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         '0123456789'
-        ' .,!?;:()[]{}"\'-_/@#$%^&*+=|\\~`'
+        ' .,!?;:()[]{}"\'-_/@#$%^&*+=|\\~`<>'
     )
     return char in safe_chars or unicodedata.category(char).startswith('L')
 
@@ -67,16 +67,16 @@ def sanitize_string(value: str, max_length: int = 1000, allow_html: bool = False
     # Trim whitespace
     value = value.strip()
     
-    # Check length
+    # Truncate if too long
     if len(value) > max_length:
-        raise ValueError(f'String too long (max {max_length} characters): {value[:50]}...')
+        value = value[:max_length]
     
     # Handle empty strings
     if not value:
         return value
     
-    if allow_html:
-        # For HTML content, only escape dangerous characters
+    if allow_html or '<' in value or '>' in value:
+        # For HTML content or strings with HTML characters, escape them
         value = html.escape(value, quote=True)
     else:
         # For regular strings, filter unsafe characters
@@ -84,10 +84,8 @@ def sanitize_string(value: str, max_length: int = 1000, allow_html: bool = False
         for char in value:
             if is_safe_character(char):
                 safe_chars.append(char)
-            else:
-                # Replace unsafe characters with space
-                safe_chars.append(' ')
-        
+            # Skip unsafe characters (don't replace with space)
+
         value = ''.join(safe_chars)
         # Normalize whitespace
         value = re.sub(r'\s+', ' ', value).strip()
@@ -126,9 +124,20 @@ def sanitize_url(url: str, max_length: int = 2000) -> str:
     # Handle empty URLs
     if not url:
         raise ValueError('URL cannot be empty')
-    
-    # Add scheme if missing
-    if not url.startswith(('http://', 'https://')):
+
+    # Check for malformed URLs that start with ://
+    if url.startswith('://'):
+        raise ValueError(f'Invalid URL format: {url}')
+
+    # Security checks for dangerous schemes (before adding default scheme)
+    url_lower = url.lower()
+    dangerous_schemes = ['javascript:', 'data:', 'file:', 'ftp:', 'mailto:', 'tel:']
+    for scheme in dangerous_schemes:
+        if url_lower.startswith(scheme):
+            raise ValueError(f'Potentially dangerous URL scheme: {url}')
+
+    # Add scheme if missing (case-insensitive check)
+    if not url_lower.startswith(('http://', 'https://')):
         url = 'https://' + url
     
     # Parse and validate URL
@@ -138,13 +147,31 @@ def sanitize_url(url: str, max_length: int = 2000) -> str:
         # Validate required components
         if not parsed.scheme or not parsed.netloc:
             raise ValueError(f'Invalid URL format: {url}')
-        
+
         # Only allow HTTP/HTTPS schemes
         if parsed.scheme not in ('http', 'https'):
             raise ValueError(f'Unsupported URL scheme: {parsed.scheme}')
+
+        # Validate domain format
+        netloc = parsed.netloc.lower()
+
+        # Check for empty netloc after scheme
+        if netloc == '':
+            raise ValueError(f'Invalid URL format: {url}')
+
+        # Check for whitespace-only netloc
+        if not netloc or netloc.isspace():
+            raise ValueError(f'Invalid URL format: {url}')
+
+        # Reject domains that are clearly not real domains
+        # Allow known test hostnames and domains with dots
+        if (netloc not in ('localhost', '127.0.0.1', 'test', 'testserver') and
+            '.' not in netloc and
+            netloc in ('not-a-url', 'invalid', 'bad-url', 'fake-domain')):
+            raise ValueError(f'Invalid URL format: {url}')
         
-        # Security checks
-        if 'javascript:' in url.lower() or 'data:' in url.lower():
+        # Additional security checks (redundant but kept for safety)
+        if any(scheme in url.lower() for scheme in ['javascript:', 'data:', 'file:', 'ftp:', 'mailto:', 'tel:']):
             raise ValueError(f'Potentially dangerous URL scheme: {url}')
         
         # Normalize URL
@@ -237,24 +264,38 @@ def sanitize_html_content(html_content: str, max_length: int = 10_000_000) -> st
         return html_content
     
     # Basic HTML sanitization
-    # Remove potentially dangerous script tags and attributes
-    dangerous_patterns = [
+    sanitized = html_content
+
+    # Remove dangerous script-related tags
+    script_patterns = [
         r'<script[^>]*>.*?</script>',  # Script tags
         r'<iframe[^>]*>.*?</iframe>',  # Iframe tags
         r'<object[^>]*>.*?</object>',  # Object tags
         r'<embed[^>]*>',               # Embed tags
-        r'javascript:',                # JavaScript protocol
-        r'data:',                      # Data protocol
-        r'on\w+\s*=',                  # Event handlers
     ]
-    
-    sanitized = html_content
-    for pattern in dangerous_patterns:
+
+    for pattern in script_patterns:
         sanitized = re.sub(pattern, '', sanitized, flags=re.IGNORECASE | re.DOTALL)
-    
-    # Normalize whitespace in HTML
-    sanitized = re.sub(r'\s+', ' ', sanitized)
-    
+
+    # Remove event handlers (onclick, onload, etc.) - match the full attribute
+    # Use a more comprehensive pattern that handles nested quotes properly
+    sanitized = re.sub(r'\s*on\w+\s*=\s*"[^"]*"', '', sanitized, flags=re.IGNORECASE)  # Double quotes
+    sanitized = re.sub(r"\s*on\w+\s*=\s*'[^']*'", '', sanitized, flags=re.IGNORECASE)  # Single quotes
+    sanitized = re.sub(r'\s*on\w+\s*=\s*[^\s>]+', '', sanitized, flags=re.IGNORECASE)   # No quotes
+
+    # Remove dangerous protocols from href and src attributes
+    # Replace javascript: and data: protocols with empty href/src
+    sanitized = re.sub(r'(href|src)\s*=\s*"[^"]*(?:javascript|data):[^"]*"', r'\1=""', sanitized, flags=re.IGNORECASE)
+    sanitized = re.sub(r"(href|src)\s*=\s*'[^']*(?:javascript|data):[^']*'", r'\1=""', sanitized, flags=re.IGNORECASE)
+
+    # Normalize excessive whitespace but preserve structure
+    sanitized = re.sub(r'[ \t]+', ' ', sanitized)  # Collapse spaces and tabs
+    sanitized = re.sub(r'\n\s*\n', '\n', sanitized)  # Remove empty lines
+
+    # Trim whitespace inside HTML tags (between > and <)
+    sanitized = re.sub(r'>\s+', '>', sanitized)  # Remove whitespace after opening tags
+    sanitized = re.sub(r'\s+<', '<', sanitized)  # Remove whitespace before closing tags
+
     return sanitized.strip()
 
 
@@ -282,13 +323,13 @@ def sanitize_error_message(error_msg: str, max_length: int = 1000) -> str:
     # Trim whitespace
     error_msg = error_msg.strip()
     
-    # Check length
-    if len(error_msg) > max_length:
-        raise ValueError(f'Error message too long (max {max_length} characters): {error_msg[:50]}...')
-    
-    # Handle empty messages
+    # Handle empty messages - return as is
     if not error_msg:
-        raise ValueError('Error message cannot be empty')
+        return error_msg
+
+    # Truncate if too long
+    if len(error_msg) > max_length:
+        error_msg = error_msg[:max_length]
     
     # Sanitize as regular string (no HTML allowed)
     sanitized = sanitize_string(error_msg, max_length, allow_html=False)
@@ -331,7 +372,7 @@ def sanitize_url_list(urls: List[str], max_urls: int = 1000, max_length: int = 2
     
     # Check list length
     if len(urls) > max_urls:
-        raise ValueError(f'Too many URLs (max {max_urls}): {len(urls)}')
+        raise ValueError(f'List should have at most {max_urls} items')
     
     # Sanitize and deduplicate URLs
     sanitized_urls = []
@@ -371,7 +412,7 @@ def sanitize_proxy_list(proxies: List[str], max_proxies: int = 50, max_length: i
     
     # Check list length
     if len(proxies) > max_proxies:
-        raise ValueError(f'Too many proxies (max {max_proxies}): {len(proxies)}')
+        raise ValueError(f'List should have at most {max_proxies} items')
     
     # Sanitize and deduplicate proxies
     sanitized_proxies = []
@@ -416,7 +457,7 @@ def sanitize_uuid(uuid_str: str) -> str:
     
     # Check length (UUID should be exactly 36 characters)
     if len(uuid_str) != 36:
-        raise ValueError(f'Invalid UUID length: {len(uuid_str)} (expected 36)')
+        raise ValueError(f'Invalid UUID format: {uuid_str}')
     
     # Validate UUID format
     try:

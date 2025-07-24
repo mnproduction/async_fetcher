@@ -15,6 +15,7 @@ dependencies = [
     "ruff>=0.12.4",
     "structlog>=25.4.0",
     "uvicorn[standard]>=0.35.0",
+    "fake-useragent>=1.4.0",
 ]
 
 [project.optional-dependencies]

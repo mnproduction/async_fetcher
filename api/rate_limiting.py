@@ -61,14 +61,18 @@ class RateLimiter:
         self.clients: Dict[str, Deque[float]] = defaultdict(deque)
         self.lock = asyncio.Lock()
         self._cleanup_task = None
-        
-        # Start cleanup task only if there's a running event loop
-        try:
-            self._cleanup_task = asyncio.create_task(self._cleanup_expired_entries())
-        except RuntimeError:
-            # No running event loop, cleanup will be started when needed
-            pass
+        self._cleanup_started = False
     
+    def _ensure_cleanup_task(self):
+        """Ensure the cleanup task is started if not already running."""
+        if not self._cleanup_started:
+            try:
+                self._cleanup_task = asyncio.create_task(self._cleanup_expired_entries())
+                self._cleanup_started = True
+            except RuntimeError:
+                # No running event loop, will try again later
+                pass
+
     async def is_allowed(self, client_id: str) -> Tuple[bool, Dict[str, int]]:
         """
         Check if a client is allowed to make a request.
@@ -79,13 +83,8 @@ class RateLimiter:
         Returns:
             Tuple[bool, Dict]: (allowed, rate_limit_info)
         """
-        # Start cleanup task if not already started
-        if self._cleanup_task is None:
-            try:
-                self._cleanup_task = asyncio.create_task(self._cleanup_expired_entries())
-            except RuntimeError:
-                # Still no running event loop, skip cleanup for now
-                pass
+        # Ensure cleanup task is started
+        self._ensure_cleanup_task()
         
         async with self.lock:
             current_time = time.time()

@@ -22,7 +22,7 @@ Version: 1.0.0
 import asyncio
 import random
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any, Union
 
 from settings.logger import get_logger
@@ -107,7 +107,7 @@ def create_job(request: FetchRequest) -> str:
     job_id = str(uuid.uuid4())
     
     # Get current timestamp
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     
     # Create job data structure
     job_data = {
@@ -118,6 +118,7 @@ def create_job(request: FetchRequest) -> str:
         "started_at": None,
         "completed_at": None,
         "request": request.model_dump(),  # Serialize request to dict
+        "options": request.options.model_dump(),  # Add options for easy access
         "results": [],
         "total_urls": len(request.links),
         "completed_urls": 0,
@@ -258,12 +259,12 @@ def update_job_status(job_id: str, status: str, error_message: Optional[str] = N
     
     # Update status and timestamp
     job["status"] = status
-    job["updated_at"] = datetime.utcnow().isoformat()
-    
+    job["updated_at"] = datetime.now(timezone.utc).isoformat()
+
     # Handle status-specific logic
     if status == "in_progress" and old_status == "pending":
         # Job is starting - set started_at timestamp
-        job["started_at"] = datetime.utcnow().isoformat()
+        job["started_at"] = datetime.now(timezone.utc).isoformat()
         logger.info(
             "Job started processing",
             job_id=job_id,
@@ -273,7 +274,7 @@ def update_job_status(job_id: str, status: str, error_message: Optional[str] = N
     
     elif status in ["completed", "failed"]:
         # Job is finishing - set completed_at timestamp
-        job["completed_at"] = datetime.utcnow().isoformat()
+        job["completed_at"] = datetime.now(timezone.utc).isoformat()
         
         # Calculate job duration if we have start time
         job_duration = None
@@ -362,7 +363,7 @@ def add_job_result(job_id: str, result: Union[FetchResult, Dict[str, Any]]) -> b
     # Add result to job
     job["results"].append(result_data)
     job["completed_urls"] += 1
-    job["updated_at"] = datetime.utcnow().isoformat()
+    job["updated_at"] = datetime.now(timezone.utc).isoformat()
     
     # Get URL and status for logging
     url = result.url if hasattr(result, 'url') else result.get('url', 'unknown')
@@ -491,7 +492,7 @@ def cleanup_completed_jobs(max_age_hours: int = 24) -> int:
         print(f"Removed {removed_count} old jobs")
         ```
     """
-    cutoff_time = datetime.utcnow().timestamp() - (max_age_hours * 3600)
+    cutoff_time = datetime.now(timezone.utc).timestamp() - (max_age_hours * 3600)
     jobs_to_remove = []
     
     for job_id, job_data in jobs.items():
@@ -627,45 +628,54 @@ async def fetch_single_url_with_semaphore(
                 max_attempts=retry_count + 1
             )
             
-            start_time = datetime.utcnow()
+            start_time = datetime.now(timezone.utc)
             
             try:
-                # Use browser pool for better performance
-                pool = await get_browser_pool()
-                async with pool.get_browser() as toolkit:
-                    html = await toolkit.get_page_content(url, proxy, wait_time)
-
-                # If we get here, it was successful
-                # Calculate response time
-                end_time = datetime.utcnow()
-                response_time_ms = int((end_time - start_time).total_seconds() * 1000)
-
-                # Record performance metrics
-                record_fetch_duration(
-                    duration_ms=response_time_ms,
-                    success=True,
-                    error_type=None
+                # Create stealth browser toolkit with proxy configuration
+                proxy_config = {"server": proxy} if proxy else None
+                toolkit = StealthBrowserToolkit(
+                    headless=True,
+                    proxy=proxy_config,
+                    wait_min=wait_time,
+                    wait_max=wait_time + 2
                 )
+                try:
+                    html = await toolkit.get_page_content(url)
 
-                logger.info(
-                    "Fetch completed successfully",
-                    url=url,
-                    proxy=proxy,
-                    response_time_ms=response_time_ms,
-                    attempt=attempt + 1,
-                    max_attempts=retry_count + 1
-                )
-                return FetchResult(
-                    url=url,
-                    status="success",
-                    html_content=html,
-                    response_time_ms=response_time_ms
-                )
+                    # If we get here, it was successful
+                    # Calculate response time
+                    end_time = datetime.now(timezone.utc)
+                    response_time_ms = int((end_time - start_time).total_seconds() * 1000)
+
+                    # Record performance metrics
+                    record_fetch_duration(
+                        duration_ms=response_time_ms,
+                        success=True,
+                        error_type=None
+                    )
+
+                    logger.info(
+                        "Fetch completed successfully",
+                        url=url,
+                        proxy=proxy,
+                        response_time_ms=response_time_ms,
+                        attempt=attempt + 1,
+                        max_attempts=retry_count + 1
+                    )
+                    return FetchResult(
+                        url=url,
+                        status="success",
+                        html_content=html,
+                        response_time_ms=response_time_ms
+                    )
+                finally:
+                    # Always clean up the toolkit
+                    await toolkit.close()
 
             except FetchError as e:
                 # Catch our specific, categorized errors
                 # Calculate response time for failed requests
-                end_time = datetime.utcnow()
+                end_time = datetime.now(timezone.utc)
                 response_time_ms = int((end_time - start_time).total_seconds() * 1000)
 
                 # Record performance metrics
@@ -719,7 +729,7 @@ async def fetch_single_url_with_semaphore(
 
             except Exception as e:
                 # Calculate response time for failed requests
-                end_time = datetime.utcnow()
+                end_time = datetime.now(timezone.utc)
                 response_time_ms = int((end_time - start_time).total_seconds() * 1000)
                 
                 # Record performance metrics for exception
@@ -795,7 +805,7 @@ async def run_fetching_job(job_id: str) -> None:
     request_data = job["request"]
     
     # Record job start time for performance tracking
-    job_start_time = datetime.utcnow()
+    job_start_time = datetime.now(timezone.utc)
     
     try:
         # Extract options from the request
@@ -917,7 +927,7 @@ async def run_fetching_job(job_id: str) -> None:
                 add_job_result(job_id, error_result)
         
         # Record job completion performance metrics
-        job_end_time = datetime.utcnow()
+        job_end_time = datetime.now(timezone.utc)
         job_duration_ms = int((job_end_time - job_start_time).total_seconds() * 1000)
         
         # Calculate detailed statistics
@@ -960,7 +970,7 @@ async def run_fetching_job(job_id: str) -> None:
     
     except Exception as e:
         # Record job failure performance metrics
-        job_end_time = datetime.utcnow()
+        job_end_time = datetime.now(timezone.utc)
         job_duration_ms = int((job_end_time - job_start_time).total_seconds() * 1000)
         
         record_job_duration(

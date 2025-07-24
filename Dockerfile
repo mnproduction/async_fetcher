@@ -1,34 +1,19 @@
-# Use Python 3.13 as the base image
-FROM python:3.13-slim
+# Use a browser-ready base image
+FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install UV for dependency management
+# Install UV
 RUN pip install uv
 
-# Copy dependency files
+# Copy and install dependencies
 COPY pyproject.toml uv.lock ./
-
-# Install Python dependencies using UV
 RUN uv sync --frozen
+RUN uv run patchright install chromium
 
-# Install Patchright
-RUN uv run pip install patchright
-RUN uv run patchright install
-
-# Copy the application code
+# Copy application code
 COPY . .
 
-# Expose the port the app runs on
 EXPOSE 8000
 
-# Command to run the application
-CMD ["uv", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["uv", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

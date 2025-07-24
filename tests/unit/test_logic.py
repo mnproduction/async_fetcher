@@ -17,7 +17,7 @@ Version: 1.0.0
 
 import pytest
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 from freezegun import freeze_time
 
@@ -93,7 +93,7 @@ class TestJobCreation:
         updated_at = datetime.fromisoformat(job_data["updated_at"])
         
         # Timestamps should be recent (within last minute)
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         assert (now - created_at).total_seconds() < 60
         assert (now - updated_at).total_seconds() < 60
 
@@ -117,7 +117,7 @@ class TestJobStatusManagement:
         
         # Verify updated_at timestamp was updated
         updated_at = datetime.fromisoformat(job_data["updated_at"])
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         assert (now - updated_at).total_seconds() < 60
     
     def test_update_job_status_invalid_job_id(self):
@@ -304,12 +304,8 @@ class TestFetchingLogic:
     @pytest.mark.asyncio
     async def test_fetch_single_url_with_semaphore_success(self, mock_browser):
         """Test successful single URL fetch."""
-        # Mock the browser pool
-        mock_pool = MagicMock()
-        mock_pool.get_browser.return_value.__aenter__.return_value = mock_browser
-        mock_pool.get_browser.return_value.__aexit__.return_value = None
-        
-        with patch('api.logic.get_browser_pool', return_value=mock_pool):
+        # Mock the StealthBrowserToolkit class
+        with patch('api.logic.StealthBrowserToolkit', return_value=mock_browser):
             result = await fetch_single_url_with_semaphore(
                 url="https://example.com",
                 semaphore=MagicMock(),
@@ -355,12 +351,8 @@ class TestFetchingLogic:
     @pytest.mark.asyncio
     async def test_fetch_single_url_with_semaphore_no_proxies(self, mock_browser):
         """Test single URL fetch without proxies."""
-        # Mock the browser pool
-        mock_pool = MagicMock()
-        mock_pool.get_browser.return_value.__aenter__.return_value = mock_browser
-        mock_pool.get_browser.return_value.__aexit__.return_value = None
-        
-        with patch('api.logic.get_browser_pool', return_value=mock_pool):
+        # Mock the StealthBrowserToolkit class
+        with patch('api.logic.StealthBrowserToolkit', return_value=mock_browser):
             result = await fetch_single_url_with_semaphore(
                 url="https://example.com",
                 semaphore=MagicMock(),
@@ -375,12 +367,8 @@ class TestFetchingLogic:
     @pytest.mark.asyncio
     async def test_run_fetching_job_success(self, sample_job_id_complex, mock_browser):
         """Test successful job execution."""
-        # Mock the browser pool
-        mock_pool = MagicMock()
-        mock_pool.get_browser.return_value.__aenter__.return_value = mock_browser
-        mock_pool.get_browser.return_value.__aexit__.return_value = None
-        
-        with patch('api.logic.get_browser_pool', return_value=mock_pool):
+        # Mock the StealthBrowserToolkit class
+        with patch('api.logic.StealthBrowserToolkit', return_value=mock_browser):
             await run_fetching_job(sample_job_id_complex)
         
         # Verify job was completed
@@ -426,12 +414,8 @@ class TestFetchingLogic:
     @pytest.mark.asyncio
     async def test_run_fetching_job_status_transitions(self, sample_job_id_complex, mock_browser):
         """Test job status transitions during execution."""
-        # Mock the browser pool
-        mock_pool = MagicMock()
-        mock_pool.get_browser.return_value.__aenter__.return_value = mock_browser
-        mock_pool.get_browser.return_value.__aexit__.return_value = None
-        
-        with patch('api.logic.get_browser_pool', return_value=mock_pool):
+        # Mock the StealthBrowserToolkit class
+        with patch('api.logic.StealthBrowserToolkit', return_value=mock_browser):
             # Start the job
             await run_fetching_job(sample_job_id_complex)
         

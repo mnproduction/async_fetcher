@@ -233,7 +233,8 @@ class TestFetchResult:
         result = FetchResult(
             url="https://broken.com",
             status="error",
-            error_message="Connection timeout"
+            error_message="Connection timeout",
+            error_type="timeout"
         )
         
         assert result.url == "https://broken.com"
@@ -260,7 +261,8 @@ class TestFetchResult:
         # The model allows error status without error_message
         result = FetchResult(
             url="https://broken.com",
-            status="error"
+            status="error",
+            error_type="unknown"
         )
         
         assert result.url == "https://broken.com"

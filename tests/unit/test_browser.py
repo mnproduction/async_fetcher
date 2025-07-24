@@ -6,7 +6,7 @@ and custom exception handling for the async web fetching service.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, AsyncMock
 from toolkit.browser import (
     StealthBrowserToolkit,
     FetchError,
@@ -61,7 +61,13 @@ class TestStealthBrowserToolkitErrorCategorization:
     @pytest.fixture
     def browser_toolkit(self):
         """Create a browser toolkit instance for testing."""
-        return StealthBrowserToolkit(headless=True)
+        toolkit = StealthBrowserToolkit(headless=True)
+        # Mock the browser to avoid actual initialization
+        toolkit.browser = MagicMock()
+        toolkit._initialized = True
+        # Mock the initialize method to prevent real browser creation
+        toolkit.initialize = AsyncMock(return_value=True)
+        return toolkit
 
     @pytest.fixture
     def mock_context(self):
@@ -89,12 +95,17 @@ class TestStealthBrowserToolkitErrorCategorization:
         response.status = 200
         response.headers = {"content-type": "text/html"}
         page.goto.return_value = response
-        page.content.return_value = "<html><body>Success</body></html>"
+        page.content.return_value = "<html><body>Test content</body></html>"
 
-        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
-            result = await browser_toolkit.get_page_content("https://example.com")
+        # Mock the browser context creation
+        browser_toolkit.browser.new_context = AsyncMock(return_value=context)
 
-        assert result == "<html><body>Success</body></html>"
+        # Mock challenge detection to return False for successful test
+        browser_toolkit._is_challenge_page = AsyncMock(return_value=False)
+
+        result = await browser_toolkit.get_page_content("https://example.com")
+
+        assert result == "<html><body>Test content</body></html>"
 
     @pytest.mark.asyncio
     async def test_timeout_error_categorization(self, browser_toolkit, mock_context):
@@ -104,9 +115,11 @@ class TestStealthBrowserToolkitErrorCategorization:
         # Mock timeout error
         page.goto.side_effect = Exception("Navigation timeout of 30000 ms exceeded")
 
-        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
-            with pytest.raises(TimeoutError) as exc_info:
-                await browser_toolkit.get_page_content("https://example.com")
+        # Mock the browser context creation
+        browser_toolkit.browser.new_context = AsyncMock(return_value=context)
+
+        with pytest.raises(TimeoutError) as exc_info:
+            await browser_toolkit.get_page_content("https://example.com")
 
             assert "timeout" in str(exc_info.value).lower()
 
@@ -118,11 +131,13 @@ class TestStealthBrowserToolkitErrorCategorization:
         # Mock proxy error
         page.goto.side_effect = Exception("Proxy connection failed")
 
-        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
-            with pytest.raises(ProxyError) as exc_info:
-                await browser_toolkit.get_page_content("https://example.com")
+        # Mock the browser context creation
+        browser_toolkit.browser.new_context = AsyncMock(return_value=context)
 
-            assert "proxy" in str(exc_info.value).lower()
+        with pytest.raises(ProxyError) as exc_info:
+            await browser_toolkit.get_page_content("https://example.com")
+
+        assert "proxy" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_navigation_error_categorization(self, browser_toolkit, mock_context):
@@ -132,11 +147,13 @@ class TestStealthBrowserToolkitErrorCategorization:
         # Mock navigation error
         page.goto.side_effect = Exception("Failed to navigate to URL")
 
-        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
-            with pytest.raises(NavigationError) as exc_info:
-                await browser_toolkit.get_page_content("https://example.com")
+        # Mock the browser context creation
+        browser_toolkit.browser.new_context = AsyncMock(return_value=context)
 
-            assert "navigation" in str(exc_info.value).lower()
+        with pytest.raises(NavigationError) as exc_info:
+            await browser_toolkit.get_page_content("https://example.com")
+
+        assert "navigation" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_http_error_categorization(self, browser_toolkit, mock_context):
@@ -149,11 +166,13 @@ class TestStealthBrowserToolkitErrorCategorization:
         response.headers = {"content-type": "text/html"}
         page.goto.return_value = response
 
-        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
-            with pytest.raises(NavigationError) as exc_info:
-                await browser_toolkit.get_page_content("https://example.com")
+        # Mock the browser context creation
+        browser_toolkit.browser.new_context = AsyncMock(return_value=context)
 
-            assert "HTTP error: 404" in str(exc_info.value)
+        with pytest.raises(NavigationError) as exc_info:
+            await browser_toolkit.get_page_content("https://example.com")
+
+        assert "HTTP error: 404" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_captcha_detection(self, browser_toolkit, mock_context):
@@ -167,11 +186,13 @@ class TestStealthBrowserToolkitErrorCategorization:
         page.goto.return_value = response
         page.content.return_value = "<html><body>Please complete this captcha</body></html>"
 
-        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
-            with pytest.raises(CaptchaError) as exc_info:
-                await browser_toolkit.get_page_content("https://example.com")
+        # Mock the browser context creation
+        browser_toolkit.browser.new_context = AsyncMock(return_value=context)
 
-            assert "captcha" in str(exc_info.value).lower()
+        with pytest.raises(CaptchaError) as exc_info:
+            await browser_toolkit.get_page_content("https://example.com")
+
+        assert "captcha" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_captcha_detection_variations(self, browser_toolkit, mock_context):
@@ -191,9 +212,11 @@ class TestStealthBrowserToolkitErrorCategorization:
             page.goto.return_value = response
             page.content.return_value = f"<html><body>{pattern}</body></html>"
 
-            with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
-                with pytest.raises(CaptchaError):
-                    await browser_toolkit.get_page_content("https://example.com")
+            # Mock the browser context creation
+            browser_toolkit.browser.new_context = AsyncMock(return_value=context)
+
+            with pytest.raises(CaptchaError):
+                await browser_toolkit.get_page_content("https://example.com")
 
     @pytest.mark.asyncio
     async def test_no_response_error(self, browser_toolkit, mock_context):
@@ -203,11 +226,13 @@ class TestStealthBrowserToolkitErrorCategorization:
         # Mock no response
         page.goto.return_value = None
 
-        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
-            with pytest.raises(NavigationError) as exc_info:
-                await browser_toolkit.get_page_content("https://example.com")
+        # Mock the browser context creation
+        browser_toolkit.browser.new_context = AsyncMock(return_value=context)
 
-            assert "No response received" in str(exc_info.value)
+        with pytest.raises(NavigationError) as exc_info:
+            await browser_toolkit.get_page_content("https://example.com")
+
+        assert "No response received" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_unexpected_error_categorization(self, browser_toolkit, mock_context):
@@ -217,11 +242,13 @@ class TestStealthBrowserToolkitErrorCategorization:
         # Mock unexpected error
         page.goto.side_effect = Exception("Unexpected browser error")
 
-        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
-            with pytest.raises(NavigationError) as exc_info:
-                await browser_toolkit.get_page_content("https://example.com")
+        # Mock the browser context creation
+        browser_toolkit.browser.new_context = AsyncMock(return_value=context)
 
-            assert "Navigation failed" in str(exc_info.value)
+        with pytest.raises(NavigationError) as exc_info:
+            await browser_toolkit.get_page_content("https://example.com")
+
+        assert "Navigation failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_resource_cleanup_on_error(self, browser_toolkit, mock_context):
@@ -231,13 +258,15 @@ class TestStealthBrowserToolkitErrorCategorization:
         # Mock error during navigation
         page.goto.side_effect = Exception("Navigation failed")
 
-        with patch.object(browser_toolkit, 'create_context', new_callable=AsyncMock, return_value=context):
-            with pytest.raises(NavigationError):
-                await browser_toolkit.get_page_content("https://example.com")
+        # Mock the browser context creation
+        browser_toolkit.browser.new_context = AsyncMock(return_value=context)
 
-            # Verify cleanup was called
-            page.close.assert_called_once()
-            context.close.assert_called_once()
+        with pytest.raises(NavigationError):
+            await browser_toolkit.get_page_content("https://example.com")
+
+        # Verify cleanup was called
+        page.close.assert_called_once()
+        context.close.assert_called_once()
 
 
 class TestFetchResultModelWithErrorType:
