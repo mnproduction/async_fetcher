@@ -1,17 +1,16 @@
-# Async Web Fetching Service
+# Simplified Cloudflare Fetcher Service
 
-A high-performance FastAPI service for asynchronously fetching web content using stealth browser technology. Built with Python 3.13, FastAPI, and Patchright for undetectable web scraping.
+A lightweight FastAPI service for fetching content from Cloudflare-protected sites using FlareSolverr cookie extraction + aiohttp. Built with Python 3.13, FastAPI, and optimized for periodic content monitoring.
 
 ## Features
 
-- **Asynchronous Fetching**: Process multiple URLs concurrently with configurable limits
-- **Stealth Browser Technology**: Uses Patchright/Playwright for undetectable web scraping
-- **Proxy Rotation**: Support for multiple proxy servers with automatic rotation
-- **Error Handling**: Comprehensive error categorization and reporting
-- **Job Management**: Track and monitor fetch jobs with real-time status updates
-- **Performance Monitoring**: Built-in performance metrics and logging
-- **Rate Limiting**: Configurable rate limiting to prevent abuse
-- **Docker Support**: Easy deployment with Docker and Docker Compose
+- **FlareSolverr Integration**: Uses FlareSolverr for Cloudflare challenge solving
+- **Fast HTTP Requests**: aiohttp for high-performance HTTP requests with cached cookies
+- **Cookie Management**: Automatic cookie caching and refresh for optimal performance
+- **Asynchronous Processing**: Concurrent URL fetching with configurable limits
+- **Simple API**: Clean, focused endpoints for single and batch fetching
+- **Health Monitoring**: Built-in health checks and service monitoring
+- **Docker Support**: Lightweight Docker deployment without browser dependencies
 
 ## Quick Start
 
@@ -22,26 +21,27 @@ A high-performance FastAPI service for asynchronously fetching web content using
 git clone <repository-url>
 cd async_fetcher
 
-# Build and start the service
+# Build and start the services (includes FlareSolverr)
 docker-compose up -d
 
 # View logs
 docker-compose logs -f
 
-# Stop the service
+# Stop the services
 docker-compose down
 ```
 
 The API will be available at http://localhost:8000.
+FlareSolverr will be available at http://localhost:8191.
 
 ### Using Docker Directly
 
 ```bash
 # Build the Docker image
-docker build -t async-web-fetcher .
+docker build -t cloudflare-fetcher .
 
-# Run the container
-docker run -p 8000:8000 async-web-fetcher
+# Run the container (requires FlareSolverr service)
+docker run -p 8000:8000 -e FLARESOLVERR_URL=http://flaresolverr:8191 cloudflare-fetcher
 ```
 
 ### Local Development
@@ -63,68 +63,72 @@ uv run uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
 
 ## API Usage
 
-### 1. Start a Fetch Job
+### 1. Fetch Single URL
 
 ```bash
-curl -X POST "http://localhost:8000/fetch/start" \
+curl -X POST "http://localhost:8000/fetch" \
      -H "Content-Type: application/json" \
      -d '{
-       "links": [
-         "https://httpbin.org/html",
-         "https://httpbin.org/json",
-         "https://example.com"
-       ],
-       "options": {
-         "proxies": [
-           "http://proxy1.example.com:8080",
-           "http://proxy2.example.com:8080"
-         ],
-         "wait_min": 1,
-         "wait_max": 3,
-         "concurrency_limit": 5,
-         "retry_count": 2
-       }
+       "url": "https://example.com",
+       "force_refresh_cookies": false
      }'
 ```
 
 Response:
 ```json
 {
-  "job_id": "123e4567-e89b-12d3-a456-426614174000",
-  "status_url": "/fetch/status/123e4567-e89b-12d3-a456-426614174000"
+  "url": "https://example.com",
+  "success": true,
+  "content": "<html><head><title>Example</title></head><body>...</body></html>",
+  "content_length": 1256,
+  "status_code": 200,
+  "execution_time": 2.5,
+  "used_cookies": true,
+  "cookies_refreshed": false,
+  "error": null
 }
 ```
 
-### 2. Check Job Status
+### 2. Fetch Multiple URLs
 
 ```bash
-curl -X GET "http://localhost:8000/fetch/status/123e4567-e89b-12d3-a456-426614174000"
+curl -X POST "http://localhost:8000/fetch/batch" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "urls": [
+         "https://httpbin.org/html",
+         "https://example.com"
+       ],
+       "max_concurrent": 2,
+       "force_refresh_cookies": false
+     }'
 ```
 
 Response:
 ```json
 {
-  "job_id": "123e4567-e89b-12d3-a456-426614174000",
-  "status": "completed",
+  "total_urls": 2,
+  "successful_urls": 2,
+  "failed_urls": 0,
+  "success_rate": 100.0,
+  "total_execution_time": 4.2,
   "results": [
     {
       "url": "https://httpbin.org/html",
-      "status": "success",
-      "html_content": "<html><head><title>Herman Melville - Moby-Dick</title></head><body><h1>Moby-Dick</h1><p>Call me Ishmael...</p></body></html>",
-      "error_message": null,
-      "error_type": null,
-      "response_time_ms": 1250,
-      "status_code": 200
+      "success": true,
+      "content": "<html>...</html>",
+      "content_length": 1024,
+      "status_code": 200,
+      "execution_time": 2.1,
+      "used_cookies": false,
+      "cookies_refreshed": false,
+      "error": null
     }
-  ],
-  "total_urls": 3,
-  "completed_urls": 3,
-  "progress_percentage": 100.0,
-  "is_finished": true
+  ]
 }
 ```
 
-### 3. Health Check
+### 3. Check Service Health
 
 ```bash
 curl -X GET "http://localhost:8000/health"
@@ -133,10 +137,12 @@ curl -X GET "http://localhost:8000/health"
 Response:
 ```json
 {
+  "service": "SimpleFetcher",
   "status": "healthy",
-  "service": "Async Web Fetching Service",
-  "version": "1.0.0",
-  "timestamp": 1640995200.0
+  "flaresolverr_healthy": true,
+  "cached_domains": 3,
+  "timestamp": 1640995200.0,
+  "error": null
 }
 ```
 
@@ -153,18 +159,14 @@ Response:
 Create a `.env` file in the project root:
 
 ```env
+# FlareSolverr Configuration
+FLARESOLVERR_URL=http://localhost:8191
+
 # Logging
 LOG_LEVEL=INFO
 
-# Rate Limiting
-RATE_LIMIT_REQUESTS_PER_MINUTE=60
-RATE_LIMIT_REQUESTS_PER_HOUR=1000
-RATE_LIMIT_BURST_LIMIT=10
-
-# Fetch Endpoint Rate Limiting
-FETCH_RATE_LIMIT_REQUESTS_PER_MINUTE=30
-FETCH_RATE_LIMIT_REQUESTS_PER_HOUR=500
-FETCH_RATE_LIMIT_BURST_LIMIT=5
+# Cookie Management
+COOKIE_MAX_STALE_SECONDS=1800
 ```
 
 ### Docker Environment Variables
@@ -175,40 +177,30 @@ For Docker deployment, you can set environment variables in the `docker-compose.
 environment:
   - PYTHONPATH=/app
   - LOG_LEVEL=INFO
-  - RATE_LIMIT_REQUESTS_PER_MINUTE=60
+  - FLARESOLVERR_URL=http://flaresolverr:8191
+  - COOKIE_MAX_STALE_SECONDS=1800
 ```
 
-## Rate Limiting
+### Additional Endpoints
 
-The API implements configurable rate limiting:
+#### Cookie Information
+```bash
+curl -X GET "http://localhost:8000/cookies/info"
+```
 
-- **Default endpoints**: 60 requests/minute, 1000 requests/hour
-- **Fetch endpoints**: 30 requests/minute, 500 requests/hour
-- **Burst protection**: Configurable burst limits
+#### Cleanup Stale Cookies
+```bash
+curl -X POST "http://localhost:8000/cleanup"
+```
 
 ## Error Handling
 
-The service categorizes errors into different types:
+The service handles various error types:
 
-- **NetworkError**: Connection or network-related issues
-- **TimeoutError**: Request timeout issues
-- **NavigationError**: Browser navigation failures
-- **CaptchaError**: CAPTCHA detection
-- **ProxyError**: Proxy-related issues
-
-## Monitoring
-
-### Performance Metrics
-
-```bash
-curl -X GET "http://localhost:8000/admin/performance"
-```
-
-### Rate Limiting Statistics
-
-```bash
-curl -X GET "http://localhost:8000/admin/rate-limits"
-```
+- **Connection Errors**: Network connectivity issues
+- **Timeout Errors**: Request timeout issues
+- **Cloudflare Errors**: Challenge solving failures
+- **HTTP Errors**: Server response errors
 
 ## Development
 
@@ -218,16 +210,14 @@ curl -X GET "http://localhost:8000/admin/rate-limits"
 async_fetcher/
 ├── api/                    # FastAPI application
 │   ├── main.py            # Main application entry point
-│   ├── models.py          # Pydantic data models
-│   ├── logic.py           # Business logic
-│   ├── sanitization.py    # Input sanitization
-│   └── rate_limiting.py   # Rate limiting middleware
-├── toolkit/               # Browser automation toolkit
-│   ├── browser.py         # StealthBrowserToolkit
-│   └── browser_pool.py    # Browser pool management
+│   └── models.py          # Pydantic data models
+├── toolkit/               # Core fetching toolkit
+│   ├── simple_fetcher.py  # Main fetcher service
+│   ├── flaresolverr.py    # FlareSolverr client
+│   ├── cookie_manager.py  # Cookie management
+│   └── sanitization.py   # Input sanitization
 ├── settings/              # Application settings
-│   ├── logger.py          # Structured logging
-│   └── performance_metrics.py # Performance monitoring
+│   └── logger.py          # Structured logging
 ├── tests/                 # Test suite
 │   ├── unit/             # Unit tests
 │   ├── integration/      # Integration tests
@@ -271,32 +261,13 @@ uv run mypy api/ toolkit/ settings/
 
 ### Production Deployment
 
-For production deployment with full browser functionality, you'll need to include browser dependencies. The current Dockerfile is optimized for development and testing.
+The current Dockerfile is optimized for the simplified FlareSolverr + aiohttp architecture and doesn't require browser dependencies. The service relies on an external FlareSolverr service for Cloudflare bypass.
 
-**For Production with Browser Support:**
+**Production Setup:**
 
-1. **Option 1: Use a browser-enabled base image**
-```dockerfile
-# Use a base image with browser dependencies
-FROM mcr.microsoft.com/playwright/python:v1.40.0-focal
-
-WORKDIR /app
-COPY pyproject.toml uv.lock ./
-RUN pip install uv && uv sync --frozen
-RUN uv run pip install patchright && uv run patchright install
-COPY . .
-EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-2. **Option 2: Add browser dependencies to current Dockerfile**
-```dockerfile
-# Add these packages to the apt-get install command:
-libglib2.0-0 libnss3 libnspr4 libdbus-1-3 libatk1.0-0 libatk-bridge2.0-0 \
-libexpat1 libatspi2.0-0 libx11-6 libxcomposite1 libxdamage1 libxext6 \
-libxfixes3 libxrandr2 libgbm1 libxcb1 libxkbcommon0 libasound2 \
-fonts-liberation libdrm2 libgtk-3-0 libxss1 xdg-utils
-```
+1. **Use the provided docker-compose.yml** (recommended)
+2. **Or deploy separately** with FlareSolverr service available
+3. **Configure FLARESOLVERR_URL** environment variable
 
 **Current Development Setup:**
 - ✅ Perfect for API development and testing

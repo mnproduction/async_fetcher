@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "async-fetcher"
 version = "0.1.0"
-description = "A service for asynchronously fetching web content using stealth browsers"
+description = "A simplified service for fetching content from Cloudflare-protected sites using FlareSolverr"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.116.1",
-    "httpx>=0.28.1",
-    "patchright>=1.52.5",
+    "aiohttp>=3.10.0",
+    "httpx>=0.24.0",
     "pydantic>=2.11.7",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.1.0",
@@ -19,7 +19,6 @@ dependencies = [
     "ruff>=0.12.4",
     "structlog>=25.4.0",
     "uvicorn[standard]>=0.35.0",
-    "fake-useragent>=1.4.0",
     "uvloop>=0.20.0; sys_platform != 'win32'",
 ]
 
@@ -51,17 +50,26 @@ filterwarnings = [
 ]
 markers = [
     "unit: Unit tests for individual components (fast, mocked)",
-    "integration: Integration tests for API endpoints (mocked dependencies)",
-    "e2e: End-to-end tests with real browser automation (slow)",
-    "slow: Tests that take longer to run",
-    "browser: Tests that require browser automation",
+    "integration: Integration tests for API endpoints (mocked FlareSolverr)",
+    "e2e: End-to-end tests with real FlareSolverr service (slow)",
+    "slow: Tests that take longer to run (>5 seconds)",
+    "flaresolverr: Tests that require FlareSolverr service",
     "fast: Tests that run quickly (under 1 second)",
     "network: Tests that require network access",
-    "mock: Tests that use mocked dependencies"
+    "mock: Tests that use mocked dependencies",
+    "cloudflare: Tests that interact with Cloudflare-protected sites"
 ]
 
-# Fast test configuration (equivalent to pytest-fast.ini)
-# Run with: pytest -c pyproject.toml -m "not e2e and not slow" --cov=api --cov=toolkit --cov=settings --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=80
-
-# E2E test configuration (equivalent to pytest-e2e.ini)
-# Run with: pytest -c pyproject.toml -m "e2e" --tb=short
+# Test configurations for different scenarios:
+#
+# Fast tests (unit + mocked integration):
+# pytest -m "not e2e and not slow" --cov=api --cov=toolkit --cov=settings --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=75
+#
+# Integration tests (with mocked FlareSolverr):
+# pytest -m "integration" --tb=short
+#
+# E2E tests (requires FlareSolverr service):
+# pytest -m "e2e" --tb=short -v
+#
+# Cloudflare tests (requires FlareSolverr + network):
+# pytest -m "cloudflare" --tb=short -v -s

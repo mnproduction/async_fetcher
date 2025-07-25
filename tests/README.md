@@ -1,154 +1,267 @@
-# Test Suite Documentation
+# Test Suite for Simplified Content Fetcher
 
-This document describes the optimized test suite structure designed for fast execution and comprehensive coverage.
+This directory contains comprehensive tests for the Simplified Content Fetcher, organized into different categories based on scope and dependencies. The test suite is designed for the simplified FlareSolverr + aiohttp architecture.
+
+## Test Structure
+
+```
+tests/
+├── unit/                           # Unit tests (fast, isolated)
+│   ├── test_flaresolverr.py       # FlareSolverr client tests
+│   ├── test_cookie_manager.py     # Cookie management tests
+│   ├── test_simple_fetcher.py     # Simple fetcher tests
+│   └── test_models.py             # Data model tests
+├── integration/                   # Integration tests (API endpoints)
+│   └── test_api_endpoints.py     # API endpoint tests with mocked dependencies
+├── e2e/                          # End-to-end tests (full system)
+│   └── test_real_flaresolverr.py # Real FlareSolverr integration tests
+├── conftest.py                   # Shared test fixtures
+└── README.md                     # This file
+```
 
 ## Test Categories
 
-### 1. Unit Tests (`tests/unit/`)
-- **Purpose**: Test individual components in isolation
-- **Speed**: Very fast (< 1 second per test)
-- **Dependencies**: All external dependencies are mocked
-- **Markers**: `@pytest.mark.unit`, `@pytest.mark.fast`, `@pytest.mark.mock`
+### Unit Tests (`pytest -m unit`)
+- **Fast execution** (< 1 second per test)
+- **Isolated components** with mocked dependencies
+- **High coverage** of individual functions and classes
+- **No external dependencies** (no network, no FlareSolverr)
 
-### 2. Integration Tests (`tests/integration/`)
-- **Purpose**: Test API endpoints and component interactions
-- **Speed**: Fast (< 1 second per test with mocked browser)
-- **Dependencies**: Browser automation is mocked, database/external APIs mocked
-- **Markers**: `@pytest.mark.integration`, `@pytest.mark.fast`, `@pytest.mark.mock`
+**Components tested:**
+- FlareSolverr client (mocked HTTP requests)
+- Cookie manager (session storage and validation)
+- Simple fetcher (fetch logic with mocked dependencies)
+- Data models (Pydantic validation)
 
-### 3. End-to-End Tests (`tests/e2e/`)
-- **Purpose**: Test complete workflows with real browser automation
-- **Speed**: Slow (10+ seconds per test)
-- **Dependencies**: Real browser instances, network access required
-- **Markers**: `@pytest.mark.e2e`, `@pytest.mark.slow`, `@pytest.mark.browser`, `@pytest.mark.network`
+### Integration Tests (`pytest -m integration`)
+- **API endpoint testing** with mocked FlareSolverr
+- **Request/response validation**
+- **Error handling scenarios**
+- **FastAPI application behavior**
+
+**Endpoints tested:**
+- `/health` - Service health check
+- `/` - Service information
+- `/fetch` - Single URL fetch
+- `/fetch/batch` - Batch URL fetch
+- `/cookies/info` - Cookie session information
+- `/cleanup` - Expired cookie cleanup
+
+### End-to-End Tests (`pytest -m e2e`)
+- **Full system testing** with real FlareSolverr service
+- **Actual Cloudflare bypass** scenarios
+- **Real network requests**
+- **Slower execution** (may take minutes)
+
+**Scenarios tested:**
+- FlareSolverr health checks
+- Simple challenge solving
+- Cloudflare challenge solving (tem.fi)
+- Complete cookie session lifecycle
+- Real network fetching
 
 ## Running Tests
 
-### Fast Development Testing (Recommended)
+### Quick Tests (Unit + Integration)
 ```bash
-# Run only fast tests (unit + integration with mocks)
-pytest -c pytest-fast.ini
-
-# Or using markers
+# Run fast tests only (recommended for development)
 pytest -m "not e2e and not slow"
 
-# Run specific test categories
-pytest -m unit          # Unit tests only
-pytest -m integration   # Integration tests only
-pytest -m fast          # All fast tests
+# With coverage report
+pytest -m "not e2e and not slow" --cov=api --cov=toolkit --cov=settings --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=75
 ```
 
-### Full Test Suite
+### All Tests
 ```bash
-# Run all tests including E2E (slow)
+# Run all tests (including slow E2E tests)
 pytest
 
-# Run with coverage
-pytest --cov=api --cov=toolkit --cov=settings
+# Run with verbose output
+pytest -v
 ```
 
-### End-to-End Testing
+### Specific Test Categories
 ```bash
-# Run only E2E tests
-pytest -c pytest-e2e.ini
+# Unit tests only
+pytest -m unit
 
-# Or using markers
+# Integration tests only
+pytest -m integration
+
+# E2E tests only (requires FlareSolverr service)
 pytest -m e2e
+
+# Fast tests only
+pytest -m fast
+
+# Slow tests only
+pytest -m slow
 ```
 
-## Performance Improvements
+### FlareSolverr-specific Tests
+```bash
+# Tests requiring FlareSolverr service
+pytest -m flaresolverr
 
-### Before Optimization
-- Integration tests: **12+ seconds** (real browser automation)
-- Unit tests: **10+ seconds** (broken async mocks)
-- Total test time: **20+ seconds**
+# Cloudflare bypass tests
+pytest -m cloudflare
 
-### After Optimization
-- Integration tests: **0.2-0.3 seconds** (mocked browser)
-- Unit tests: **10 seconds** (fixed async mocks)
-- Fast test suite: **~11 seconds total**
-- **98% performance improvement** for integration tests
+# Network-dependent tests
+pytest -m network
+```
 
-## Test Configuration Files
+## Test Markers
 
-### `pytest.ini` (Default)
-- Runs all test types
-- Includes coverage reporting
-- Suitable for CI/CD pipelines
+The test suite uses pytest markers to categorize tests:
 
-### `pytest-fast.ini`
-- Excludes E2E and slow tests
-- Optimized for development
-- Fastest feedback loop
+- `unit`: Unit tests for individual components (fast, mocked)
+- `integration`: Integration tests for API endpoints (mocked FlareSolverr)
+- `e2e`: End-to-end tests with real FlareSolverr service (slow)
+- `slow`: Tests that take longer to run (>5 seconds)
+- `flaresolverr`: Tests that require FlareSolverr service
+- `fast`: Tests that run quickly (under 1 second)
+- `network`: Tests that require network access
+- `mock`: Tests that use mocked dependencies
+- `cloudflare`: Tests that interact with Cloudflare-protected sites
 
-### `pytest-e2e.ini`
-- Runs only E2E tests
-- No coverage reporting
-- For comprehensive testing
+## Prerequisites
 
-## Browser Automation Strategy
+### For Unit and Integration Tests
+- No external dependencies required
+- All dependencies are mocked
 
-### Development/CI (Fast)
-- **Unit tests**: Browser toolkit methods are mocked with `AsyncMock`
-- **Integration tests**: Browser class constructor is mocked to return mock instance
-- **Result**: No real browser instances created, tests complete in milliseconds
+### For E2E Tests
+- **FlareSolverr service** must be running:
+  ```bash
+  docker-compose up flaresolverr
+  ```
+- **Network access** for real HTTP requests
+- **Longer timeouts** for Cloudflare challenges
 
-### E2E Testing (Comprehensive)
-- **Real browsers**: Actual Chromium/Firefox instances via Playwright
-- **Browser pooling**: Reuse browser instances to reduce initialization overhead
-- **Network access**: Tests against real websites
-- **Result**: Comprehensive validation but slower execution
+## Test Configuration
 
-## Browser Pool (Optional)
+Test configuration is defined in `pyproject.toml`:
 
-For scenarios requiring real browsers but with better performance:
+```toml
+[tool.pytest.ini_options]
+addopts = "-v"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+asyncio_mode = "strict"
+```
 
+## Test Fixtures
+
+### Shared Fixtures (`conftest.py`)
+- `test_client`: FastAPI TestClient for API testing
+- `async_client`: Async HTTP client for testing
+- `mock_flaresolverr_client`: Mock FlareSolverr client
+- `mock_cookie_manager`: Mock cookie manager
+- `mock_simple_fetcher`: Mock simple fetcher
+- `sample_fetch_requests`: Sample request data
+- `sample_fetch_results`: Sample result data
+
+## Writing Tests
+
+### Unit Test Example
 ```python
-from toolkit.browser_pool import get_browser_pool
+import pytest
+from unittest.mock import AsyncMock
 
-# Use pooled browser
-pool = await get_browser_pool()
-async with pool.get_browser() as browser:
-    content = await browser.get_page_content(url)
+@pytest.mark.unit
+@pytest.mark.fast
+@pytest.mark.mock
+async def test_flaresolverr_health_check(mock_flaresolverr_client):
+    mock_flaresolverr_client.health_check.return_value = {"status": "ok"}
+    result = await mock_flaresolverr_client.health_check()
+    assert result["status"] == "ok"
 ```
 
-**Benefits**:
-- Reuses browser instances
-- Reduces initialization overhead
-- Configurable pool size and cleanup
-- Automatic health monitoring
+### Integration Test Example
+```python
+import pytest
+
+@pytest.mark.integration
+@pytest.mark.fast
+@pytest.mark.mock
+def test_health_endpoint(test_client):
+    response = test_client.get("/health")
+    assert response.status_code == 200
+    assert "service" in response.json()
+```
+
+### E2E Test Example
+```python
+import pytest
+
+@pytest.mark.e2e
+@pytest.mark.slow
+@pytest.mark.flaresolverr
+async def test_real_flaresolverr_health(flaresolverr_client):
+    result = await flaresolverr_client.health_check()
+    assert result["status"] == "ok"
+```
+
+## Test Data
+
+### Sample URLs for Testing
+- `https://httpbin.org/html` - Simple HTML content
+- `https://httpbin.org/json` - JSON response
+- `https://httpbin.org/status/404` - Error scenarios
+- `https://tem.fi` - Cloudflare-protected site (E2E only)
+
+## Coverage Requirements
+
+- **Minimum coverage**: 75%
+- **Unit tests**: Should cover all business logic
+- **Integration tests**: Should cover all API endpoints
+- **E2E tests**: Should cover critical Cloudflare bypass scenarios
 
 ## Best Practices
 
 ### For Development
-1. Use `pytest -c pytest-fast.ini` for rapid feedback
-2. Run E2E tests only before major releases
+1. Use fast tests (`pytest -m "not e2e and not slow"`) for rapid feedback
+2. Run E2E tests only when testing Cloudflare bypass functionality
 3. Focus on unit and integration test coverage
 
 ### For CI/CD
 1. Run fast tests on every commit
-2. Run E2E tests on release branches
+2. Run E2E tests on release branches or nightly
 3. Use parallel test execution for large suites
 
 ### Writing New Tests
-1. **Unit tests**: Mock all external dependencies
-2. **Integration tests**: Test API behavior with mocked browser
-3. **E2E tests**: Use real browsers only for critical user journeys
+1. **Unit tests**: Mock all external dependencies (FlareSolverr, aiohttp)
+2. **Integration tests**: Test API behavior with mocked services
+3. **E2E tests**: Use real FlareSolverr only for critical bypass scenarios
 
 ## Troubleshooting
 
-### Slow Test Execution
-- Check if E2E tests are running unintentionally
-- Verify browser mocks are properly configured
-- Use `pytest --durations=10` to identify slow tests
+### Common Issues
 
-### Browser Mock Issues
-- Ensure `AsyncMock` is used for async browser methods
-- Verify mock setup in test fixtures
-- Check that browser class constructor is mocked in integration tests
+1. **FlareSolverr tests failing**: Ensure FlareSolverr service is running
+   ```bash
+   docker-compose up flaresolverr
+   ```
 
-### E2E Test Failures
-- Verify network connectivity
-- Check if target websites are accessible
-- Ensure browser dependencies are installed
-- Review browser pool configuration
+2. **Async tests hanging**: Check event loop configuration in `conftest.py`
+
+3. **Import errors**: Ensure PYTHONPATH includes project root
+
+4. **Coverage too low**: Add tests for uncovered code paths
+
+5. **Slow tests**: Use `-m "not slow"` for development
+
+### E2E Test Requirements
+
+- FlareSolverr service running on `localhost:8191`
+- Network connectivity for real HTTP requests
+- Longer timeouts for Cloudflare challenges (30-60 seconds)
+
+### Getting Help
+
+- Check test output for specific error messages
+- Review test fixtures in `conftest.py`
+- Consult pytest documentation for advanced features
+- Use `pytest --collect-only` to see available tests

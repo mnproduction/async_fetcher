@@ -1,5 +1,5 @@
-# Use a browser-ready base image
-FROM mcr.microsoft.com/playwright/python:v1.40.0-jammy
+# Use lightweight Python base image
+FROM python:3.13-slim
 
 WORKDIR /app
 
@@ -9,7 +9,6 @@ RUN pip install uv
 # Copy and install dependencies
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen
-RUN uv run patchright install chromium
 
 # Copy application code
 COPY . .

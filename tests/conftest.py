@@ -1,39 +1,39 @@
 """
-Pytest fixtures for Async HTML Fetcher Service tests
+Pytest fixtures for Simplified Content Fetcher tests
 
 This module provides reusable fixtures for unit and integration tests,
-including test clients, sample data, and mock objects.
+including test clients, sample data, and mock objects for the simplified
+FlareSolverr + aiohttp architecture.
 
 Fixtures:
 - test_client: FastAPI TestClient for API testing
-- sample_fetch_request: Sample FetchRequest for testing
-- sample_job_id: Sample job ID with cleanup
-- event_loop: Async event loop for async tests
-- mock_browser: Mock browser for testing
-- sample_fetch_result: Sample FetchResult for testing
-- rate_limiter: Rate limiter instance for testing
+- mock_flaresolverr: Mock FlareSolverr client
+- mock_cookie_manager: Mock cookie manager
+- sample_fetch_requests: Sample request data
+- sample_fetch_results: Sample result data
 
-Author: Async HTML Fetcher Service
-Version: 1.0.0
+Author: Simplified Content Fetcher
+Version: 2.0.0
 """
 
 import pytest
 import pytest_asyncio
 import asyncio
-import platform
-from datetime import datetime
+import time
 from unittest.mock import AsyncMock, MagicMock
-
-
 
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 # Import application modules
 from api.main import app
-from api.logic import jobs, create_job, update_job_status
-from api.models import FetchRequest, FetchOptions, FetchResult, FetchResponse
-from api.rate_limiting import RateLimiter, RateLimitConfig
+from api.models import (
+    SingleFetchRequest, BatchFetchRequest, FetchResult,
+    BatchFetchResponse
+)
+from toolkit.flaresolverr import FlareSolverrClient
+from toolkit.cookie_manager import CookieManager, CookieSession
+from toolkit.simple_fetcher import SimpleFetcher
 
 
 # =============================================================================
@@ -44,7 +44,7 @@ from api.rate_limiting import RateLimiter, RateLimitConfig
 def test_client():
     """
     Create a test client for the FastAPI app.
-    
+
     Returns:
         TestClient: FastAPI test client for making HTTP requests
     """
@@ -55,12 +55,12 @@ def test_client():
 async def async_client():
     """
     Create an async test client for the FastAPI app.
-    
+
     Returns:
         AsyncClient: Async HTTP client for testing
     """
     from httpx import ASGITransport
-    
+
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test"
@@ -73,53 +73,31 @@ async def async_client():
 # =============================================================================
 
 @pytest.fixture
-def sample_fetch_options():
+def sample_single_fetch_request():
     """
-    Create sample fetch options for testing.
-    
+    Create a sample single fetch request for testing.
+
     Returns:
-        FetchOptions: Sample fetch configuration
+        SingleFetchRequest: Sample single fetch request
     """
-    return FetchOptions(
-        proxies=["http://proxy.example.com:8080", "https://proxy2.example.com:3128"],
-        wait_min=1,
-        wait_max=3,
-        concurrency_limit=5
+    return SingleFetchRequest(
+        url="https://example.com",
+        force_refresh_cookies=False
     )
 
 
 @pytest.fixture
-def sample_fetch_request(sample_fetch_options):
+def sample_batch_fetch_request():
     """
-    Create a sample fetch request for testing.
-    
-    Args:
-        sample_fetch_options: Sample fetch options
-        
-    Returns:
-        FetchRequest: Sample fetch request
-    """
-    return FetchRequest(
-        links=[
-            "https://example.com",
-            "https://test.com",
-            "https://sample.org"
-        ],
-        options=sample_fetch_options
-    )
+    Create a sample batch fetch request for testing.
 
-
-@pytest.fixture
-def sample_fetch_request_simple():
-    """
-    Create a simple sample fetch request for testing.
-    
     Returns:
-        FetchRequest: Simple fetch request with minimal options
+        BatchFetchRequest: Sample batch fetch request
     """
-    return FetchRequest(
-        links=["https://example.com"],
-        options=FetchOptions()
+    return BatchFetchRequest(
+        urls=["https://example.com", "https://test.com", "https://sample.org"],
+        max_concurrent=3,
+        force_refresh_cookies=False
     )
 
 
@@ -127,16 +105,20 @@ def sample_fetch_request_simple():
 def sample_fetch_result_success():
     """
     Create a sample successful fetch result.
-    
+
     Returns:
         FetchResult: Sample successful fetch result
     """
     return FetchResult(
         url="https://example.com",
-        status="success",
-        html_content="<html><body><h1>Hello World</h1></body></html>",
-        response_time_ms=1250,
-        status_code=200
+        success=True,
+        content="<html><body><h1>Hello World</h1></body></html>",
+        content_length=45,
+        status_code=200,
+        execution_time=1.25,
+        used_cookies=True,
+        cookies_refreshed=False,
+        error=None
     )
 
 
@@ -144,131 +126,71 @@ def sample_fetch_result_success():
 def sample_fetch_result_error():
     """
     Create a sample error fetch result.
-    
+
     Returns:
         FetchResult: Sample error fetch result
     """
     return FetchResult(
         url="https://broken.com",
-        status="error",
-        error_message="Connection timeout after 30 seconds",
-        response_time_ms=30000
+        success=False,
+        content=None,
+        content_length=0,
+        status_code=None,
+        execution_time=30.0,
+        used_cookies=False,
+        cookies_refreshed=False,
+        error="Connection timeout after 30 seconds"
     )
 
 
 @pytest.fixture
-def sample_fetch_response(sample_job_id, sample_fetch_result_success):
+def sample_batch_response():
     """
-    Create a sample fetch response.
-    
-    Args:
-        sample_job_id: Sample job ID
-        sample_fetch_result_success: Sample successful fetch result
-        
+    Create a sample batch fetch response.
+
     Returns:
-        FetchResponse: Sample fetch response
+        BatchFetchResponse: Sample batch response
     """
-    return FetchResponse(
-        job_id=sample_job_id,
-        status="completed",
-        results=[sample_fetch_result_success],
-        total_urls=1,
-        completed_urls=1,
-        started_at=datetime.now(),
-        completed_at=datetime.now()
+    return BatchFetchResponse(
+        total_urls=3,
+        successful_urls=2,
+        failed_urls=1,
+        success_rate=66.7,
+        total_execution_time=5.5,
+        results=[
+            FetchResult(
+                url="https://example.com",
+                success=True,
+                content="<html>Example</html>",
+                content_length=20,
+                status_code=200,
+                execution_time=1.5,
+                used_cookies=True,
+                cookies_refreshed=False
+            ),
+            FetchResult(
+                url="https://test.com",
+                success=True,
+                content="<html>Test</html>",
+                content_length=17,
+                status_code=200,
+                execution_time=2.0,
+                used_cookies=True,
+                cookies_refreshed=False
+            ),
+            FetchResult(
+                url="https://broken.com",
+                success=False,
+                content=None,
+                content_length=0,
+                status_code=None,
+                execution_time=2.0,
+                used_cookies=False,
+                cookies_refreshed=False,
+                error="Connection failed"
+            )
+        ]
     )
-
-
-# =============================================================================
-# JOB MANAGEMENT FIXTURES
-# =============================================================================
-
-@pytest.fixture
-def sample_job_id(sample_fetch_request_simple):
-    """
-    Create a sample job and return its ID with cleanup.
-    
-    Args:
-        sample_fetch_request_simple: Simple sample fetch request
-        
-    Yields:
-        str: Sample job ID
-        
-    Note:
-        Automatically cleans up the job after the test
-    """
-    job_id = create_job(sample_fetch_request_simple)
-    yield job_id
-    
-    # Clean up after the test
-    if job_id in jobs:
-        del jobs[job_id]
-
-
-@pytest.fixture
-def sample_job_id_complex(sample_fetch_request):
-    """
-    Create a complex sample job and return its ID with cleanup.
-    
-    Args:
-        sample_fetch_request: Complex sample fetch request
-        
-    Yields:
-        str: Sample job ID
-        
-    Note:
-        Automatically cleans up the job after the test
-    """
-    job_id = create_job(sample_fetch_request)
-    yield job_id
-    
-    # Clean up after the test
-    if job_id in jobs:
-        del jobs[job_id]
-
-
-@pytest.fixture
-def sample_job_id_in_progress(sample_fetch_request_simple):
-    """
-    Create a sample job in progress state.
-    
-    Args:
-        sample_fetch_request_simple: Simple sample fetch request
-        
-    Yields:
-        str: Sample job ID in progress state
-    """
-    job_id = create_job(sample_fetch_request_simple)
-    update_job_status(job_id, "in_progress")
-    yield job_id
-    
-    # Clean up after the test
-    if job_id in jobs:
-        del jobs[job_id]
-
-
-@pytest.fixture
-def sample_job_id_completed(sample_fetch_request_simple, sample_fetch_result_success):
-    """
-    Create a sample completed job.
-    
-    Args:
-        sample_fetch_request_simple: Simple sample fetch request
-        sample_fetch_result_success: Sample successful fetch result
-        
-    Yields:
-        str: Sample job ID in completed state
-    """
-    from api.logic import add_job_result
-    
-    job_id = create_job(sample_fetch_request_simple)
-    update_job_status(job_id, "in_progress")
-    add_job_result(job_id, sample_fetch_result_success.model_dump())
-    yield job_id
-    
-    # Clean up after the test
-    if job_id in jobs:
-        del jobs[job_id]
 
 
 # =============================================================================
@@ -276,123 +198,127 @@ def sample_job_id_completed(sample_fetch_request_simple, sample_fetch_result_suc
 # =============================================================================
 
 @pytest.fixture
-def mock_browser():
+def mock_flaresolverr_client():
     """
-    Create a mock browser for testing.
-    
+    Create a mock FlareSolverr client for testing.
+
     Returns:
-        MagicMock: Mock browser object
+        MagicMock: Mock FlareSolverr client
     """
-    mock = MagicMock()
-    mock.initialize = AsyncMock(return_value=True)
-    mock.get_page_content = AsyncMock(return_value="<html><body>Test content</body></html>")
-    mock.close = AsyncMock()
+    mock = MagicMock(spec=FlareSolverrClient)
+    mock.health_check = AsyncMock(return_value={
+        "status": "ok",
+        "version": "3.3.25",
+        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36..."
+    })
+    mock.solve_challenge = AsyncMock(return_value={
+        "solution": {
+            "url": "https://example.com",
+            "status": 200,
+            "cookies": [
+                {"name": "cf_clearance", "value": "test_token", "domain": "example.com"},
+                {"name": "session_id", "value": "abc123", "domain": "example.com"}
+            ],
+            "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36..."
+        }
+    })
     return mock
 
 
 @pytest.fixture
-def mock_browser_error():
+def mock_cookie_manager():
     """
-    Create a mock browser that returns errors.
-    
+    Create a mock cookie manager for testing.
+
     Returns:
-        MagicMock: Mock browser object that returns errors
+        MagicMock: Mock cookie manager
     """
-    mock = MagicMock()
-    mock.initialize = AsyncMock(return_value=True)
-    mock.get_page_content = AsyncMock(side_effect=Exception("Browser error"))
-    mock.close = AsyncMock()
+    mock = MagicMock(spec=CookieManager)
+    mock.get_session = MagicMock(return_value=CookieSession(
+        domain="example.com",
+        cookies_dict={"cf_clearance": "test_token", "session_id": "abc123"},
+        cookies_list=[{"name": "cf_clearance", "value": "test_token"}],
+        user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36...",
+        created_at=time.time(),
+        expires_at=time.time() + 1800,
+        last_used=time.time()
+    ))
+    mock.save_session = MagicMock()
+    mock.is_session_valid = MagicMock(return_value=True)
+    mock.cleanup_expired = MagicMock()
+    mock.get_session_info = MagicMock(return_value={
+        "cached_domains": 1,
+        "sessions": {
+            "example.com": {
+                "cookies_count": 2,
+                "age_seconds": 300.0,
+                "user_agent": "Mozilla/5.0..."
+            }
+        }
+    })
     return mock
 
 
 @pytest.fixture
-def mock_rate_limiter():
+def mock_simple_fetcher():
     """
-    Create a mock rate limiter for testing.
-    
+    Create a mock simple fetcher for testing.
+
     Returns:
-        MagicMock: Mock rate limiter
+        MagicMock: Mock simple fetcher
     """
-    mock = MagicMock()
-    mock.is_allowed = AsyncMock(return_value=(True, {
-        "limit": 60,
-        "remaining": 59,
-        "reset_time": 1234567890
-    }))
+    mock = MagicMock(spec=SimpleFetcher)
+    mock.fetch_single = AsyncMock(return_value=FetchResult(
+        url="https://example.com",
+        success=True,
+        content="<html><body>Test content</body></html>",
+        content_length=35,
+        status_code=200,
+        execution_time=1.5,
+        used_cookies=True,
+        cookies_refreshed=False
+    ))
+    mock.fetch_batch = AsyncMock(return_value=BatchFetchResponse(
+        total_urls=2,
+        successful_urls=2,
+        failed_urls=0,
+        success_rate=100.0,
+        total_execution_time=3.0,
+        results=[
+            FetchResult(
+                url="https://example.com",
+                success=True,
+                content="<html>Example</html>",
+                content_length=20,
+                status_code=200,
+                execution_time=1.5,
+                used_cookies=True,
+                cookies_refreshed=False
+            ),
+            FetchResult(
+                url="https://test.com",
+                success=True,
+                content="<html>Test</html>",
+                content_length=17,
+                status_code=200,
+                execution_time=1.5,
+                used_cookies=True,
+                cookies_refreshed=False
+            )
+        ]
+    ))
     return mock
 
 
 # =============================================================================
-# RATE LIMITING FIXTURES
-# =============================================================================
-
-@pytest.fixture
-def test_rate_limiter():
-    """
-    Create a test rate limiter instance.
-    
-    Returns:
-        RateLimiter: Test rate limiter with minimal configuration
-    """
-    config = RateLimitConfig(
-        requests_per_minute=10,
-        requests_per_hour=100,
-        burst_limit=5,
-        window_size_seconds=60
-    )
-    return RateLimiter(config)
-
-
-@pytest.fixture
-def test_rate_limiter_strict():
-    """
-    Create a strict test rate limiter instance.
-    
-    Returns:
-        RateLimiter: Test rate limiter with strict limits
-    """
-    config = RateLimitConfig(
-        requests_per_minute=2,
-        requests_per_hour=10,
-        burst_limit=1,
-        window_size_seconds=60
-    )
-    return RateLimiter(config)
-
-
-# =============================================================================
-# ASYNC EVENT LOOP FIXTURES
-# =============================================================================
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """
-    Create an event loop for async tests.
-    
-    Returns:
-        asyncio.AbstractEventLoop: Event loop for async testing
-    """
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-    
-    yield loop
-    
-    # Clean up
-    if not loop.is_closed():
-        loop.close()
-
-
-# =============================================================================
-# TEST DATA FIXTURES
+# UTILITY FIXTURES
 # =============================================================================
 
 @pytest.fixture
 def sample_urls():
     """
     Create a list of sample URLs for testing.
-    
+
     Returns:
         List[str]: List of sample URLs
     """
@@ -401,22 +327,7 @@ def sample_urls():
         "https://test.com",
         "https://sample.org",
         "https://demo.net",
-        "https://mock.io"
-    ]
-
-
-@pytest.fixture
-def sample_proxies():
-    """
-    Create a list of sample proxy URLs for testing.
-    
-    Returns:
-        List[str]: List of sample proxy URLs
-    """
-    return [
-        "http://proxy1.example.com:8080",
-        "https://proxy2.example.com:3128",
-        "socks5://proxy3.example.com:1080"
+        "https://httpbin.org/html"
     ]
 
 
@@ -424,7 +335,7 @@ def sample_proxies():
 def invalid_urls():
     """
     Create a list of invalid URLs for testing validation.
-    
+
     Returns:
         List[str]: List of invalid URLs
     """
@@ -438,81 +349,68 @@ def invalid_urls():
 
 
 @pytest.fixture
-def invalid_proxies():
-    """
-    Create a list of invalid proxy URLs for testing validation.
-    
-    Returns:
-        List[str]: List of invalid proxy URLs
-    """
-    return [
-        "not-a-proxy",
-        "http://proxy.example.com",  # Missing port
-        "invalid://proxy.example.com:8080",  # Invalid protocol
-        "http://" + "a" * 600  # Too long proxy URL
-    ]
-
-
-# =============================================================================
-# UTILITY FIXTURES
-# =============================================================================
-
-@pytest.fixture
-def clean_jobs():
-    """
-    Clean up all jobs before and after tests.
-    
-    Yields:
-        None: Cleanup fixture
-        
-    Note:
-        Clears all jobs before and after each test
-    """
-    # Clean up before test
-    jobs.clear()
-    yield
-    # Clean up after test
-    jobs.clear()
-
-
-@pytest.fixture
 def mock_time(monkeypatch):
     """
     Mock time.time() for consistent testing.
-    
+
     Args:
         monkeypatch: Pytest monkeypatch fixture
-        
+
     Returns:
         float: Mock timestamp
     """
     mock_time_value = 1234567890.0
-    
+
     def mock_time_func():
         return mock_time_value
-    
+
     monkeypatch.setattr("time.time", mock_time_func)
     return mock_time_value
 
 
 @pytest.fixture
-def mock_uuid(monkeypatch):
+def mock_aiohttp_session():
     """
-    Mock uuid.uuid4() for consistent testing.
-    
-    Args:
-        monkeypatch: Pytest monkeypatch fixture
-        
+    Create a mock aiohttp session for testing.
+
     Returns:
-        str: Mock UUID
+        MagicMock: Mock aiohttp session
     """
-    mock_uuid_value = "550e8400-e29b-41d4-a716-446655440000"
-    
-    def mock_uuid_func():
-        return mock_uuid_value
-    
-    monkeypatch.setattr("uuid.uuid4", mock_uuid_func)
-    return mock_uuid_value
+    mock_response = MagicMock()
+    mock_response.status = 200
+    mock_response.text = AsyncMock(return_value="<html><body>Test content</body></html>")
+    mock_response.headers = {"content-type": "text/html"}
+
+    mock_session = MagicMock()
+    mock_session.get = AsyncMock(return_value=mock_response)
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=None)
+
+    return mock_session
+
+
+# =============================================================================
+# ASYNC EVENT LOOP FIXTURES
+# =============================================================================
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """
+    Create an event loop for async tests.
+
+    Returns:
+        asyncio.AbstractEventLoop: Event loop for async testing
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+
+    yield loop
+
+    # Clean up
+    if not loop.is_closed():
+        loop.close()
 
 
 # =============================================================================
@@ -523,32 +421,27 @@ def mock_uuid(monkeypatch):
 def api_test_data():
     """
     Create comprehensive test data for API integration tests.
-    
+
     Returns:
         Dict: Comprehensive test data
     """
     return {
-        "valid_request": {
-            "links": ["https://example.com", "https://test.com"],
-            "options": {
-                "proxies": ["http://proxy.example.com:8080"],
-                "wait_min": 1,
-                "wait_max": 3,
-                "concurrency_limit": 5
-            }
+        "valid_single_request": {
+            "url": "https://example.com",
+            "force_refresh_cookies": False
         },
-        "invalid_request": {
-            "links": [],  # Empty links
-            "options": {
-                "wait_min": 10,
-                "wait_max": 5  # Invalid timing
-            }
+        "valid_batch_request": {
+            "urls": ["https://example.com", "https://test.com"],
+            "max_concurrent": 2,
+            "force_refresh_cookies": False
         },
-        "malformed_request": {
-            "links": ["not-a-url"],
-            "options": {
-                "proxies": ["invalid-proxy"]
-            }
+        "invalid_single_request": {
+            "url": "not-a-url",
+            "force_refresh_cookies": False
+        },
+        "invalid_batch_request": {
+            "urls": [],  # Empty URLs
+            "max_concurrent": 0  # Invalid concurrency
         }
     }
 
@@ -557,27 +450,29 @@ def api_test_data():
 def expected_responses():
     """
     Create expected response data for API tests.
-    
+
     Returns:
         Dict: Expected response data
     """
     return {
-        "job_status_response": {
-            "job_id": "550e8400-e29b-41d4-a716-446655440000",
-            "status_url": "/fetch/status/550e8400-e29b-41d4-a716-446655440000"
+        "health_response": {
+            "service": "SimpleFetcher",
+            "status": "healthy",
+            "flaresolverr_healthy": True,
+            "cached_domains": 0
         },
-        "fetch_response": {
-            "job_id": "550e8400-e29b-41d4-a716-446655440000",
-            "status": "pending",
-            "results": [],
-            "total_urls": 1,
-            "completed_urls": 0,
-            "started_at": None,
-            "completed_at": None
+        "single_fetch_success": {
+            "url": "https://example.com",
+            "success": True,
+            "content_length": 1000,
+            "status_code": 200,
+            "used_cookies": True,
+            "cookies_refreshed": False
         },
-        "error_response": {
-            "error": "Validation failed",
-            "detail": ["links: List should have at least 1 item"],
-            "type": "validation_error"
+        "batch_fetch_success": {
+            "total_urls": 2,
+            "successful_urls": 2,
+            "failed_urls": 0,
+            "success_rate": 100.0
         }
-    } 
+    }
