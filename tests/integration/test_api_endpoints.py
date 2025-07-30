@@ -7,7 +7,7 @@ focusing on request/response handling, validation, and error cases.
 
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
-from api.models import FetchResult, BatchFetchResponse
+from api.models import FetchResult
 
 # Mark all tests in this file as integration tests
 pytestmark = [pytest.mark.integration, pytest.mark.fast, pytest.mark.mock]

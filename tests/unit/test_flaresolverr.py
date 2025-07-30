@@ -5,7 +5,6 @@ This module tests the FlareSolverr client functionality including
 health checks, challenge solving, and error handling.
 """
 
-import asyncio
 import pytest
 import aiohttp
 from unittest.mock import AsyncMock, MagicMock, patch

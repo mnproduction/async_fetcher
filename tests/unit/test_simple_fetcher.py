@@ -6,10 +6,8 @@ single URL fetching, batch processing, and error handling.
 """
 
 import pytest
-import aiohttp
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 from toolkit.simple_fetcher import SimpleFetcher, FetchResult
-from toolkit.cookie_manager import CookieSession
 
 # Mark all tests in this file as unit tests
 pytestmark = [pytest.mark.unit, pytest.mark.fast, pytest.mark.mock]
