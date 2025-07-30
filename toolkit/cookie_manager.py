@@ -218,7 +218,9 @@ class CookieManager:
     def _extract_domain(self, url: str) -> str:
         """Extract domain from URL."""
         parsed = urlparse(url)
-        return parsed.netloc
+        if not parsed.netloc:
+            raise ValueError(f"Invalid URL format: {url}")
+        return parsed.hostname
     
     async def _extract_cookies(self, url: str, domain: str) -> CookieSession:
         """
