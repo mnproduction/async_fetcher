@@ -48,11 +48,6 @@ jobs:
         image: ghcr.io/flaresolverr/flaresolverr:latest
         ports:
           - 8191:8191
-        options: >-
-          --health-cmd "curl -f http://127.0.0.1:8191/v1 || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
 
     steps:
       - name: Checkout code
@@ -106,11 +101,6 @@ jobs:
         image: ghcr.io/flaresolverr/flaresolverr:latest
         ports:
           - 8191:8191
-        options: >-
-          --health-cmd "curl -f http://127.0.0.1:8191/v1 || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
 
     steps:
       - name: Checkout code
