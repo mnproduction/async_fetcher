@@ -316,17 +316,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # Optional: Add Redis for job persistence
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
 
-volumes:
-  redis-data:
 ```
 
 ## Troubleshooting

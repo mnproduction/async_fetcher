@@ -33,14 +33,3 @@ services:
       retries: 3
       start_period: 40s
 
-  # For Phase 2: Add Redis for job persistence
-  # redis:
-  #   image: redis:7-alpine
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis-data:/data
-  #   restart: unless-stopped
-
-# volumes:
-#   redis-data:

@@ -392,82 +392,6 @@ def sanitize_url_list(urls: List[str], max_urls: int = 1000, max_length: int = 2
     return sanitized_urls
 
 
-def sanitize_proxy_list(proxies: List[str], max_proxies: int = 50, max_length: int = 500) -> List[str]:
-    """
-    Sanitize a list of proxy URLs with deduplication.
-    
-    Args:
-        proxies: List of raw proxy URL strings
-        max_proxies: Maximum number of proxies allowed
-        max_length: Maximum length per proxy URL
-        
-    Returns:
-        List[str]: List of sanitized proxy URLs
-        
-    Raises:
-        ValueError: If list is too long or contains invalid proxies
-    """
-    if not isinstance(proxies, list):
-        raise ValueError(f'Expected list, got {type(proxies).__name__}')
-    
-    # Check list length
-    if len(proxies) > max_proxies:
-        raise ValueError(f'List should have at most {max_proxies} items')
-    
-    # Sanitize and deduplicate proxies
-    sanitized_proxies = []
-    seen_proxies = set()
-    
-    for proxy in proxies:
-        # Sanitize individual proxy
-        sanitized_proxy = sanitize_proxy_url(proxy, max_length)
-        
-        # Check for duplicates
-        if sanitized_proxy in seen_proxies:
-            raise ValueError(f'Duplicate proxy URL found: {proxy}')
-        
-        seen_proxies.add(sanitized_proxy)
-        sanitized_proxies.append(sanitized_proxy)
-    
-    return sanitized_proxies
-
-
-# =============================================================================
-# UUID VALIDATION
-# =============================================================================
-
-def sanitize_uuid(uuid_str: str) -> str:
-    """
-    Validate and sanitize UUID format.
-    
-    Args:
-        uuid_str: Raw UUID string
-        
-    Returns:
-        str: Validated UUID string
-        
-    Raises:
-        ValueError: If UUID format is invalid
-    """
-    if not isinstance(uuid_str, str):
-        raise ValueError(f'Expected string, got {type(uuid_str).__name__}')
-    
-    # Trim whitespace
-    uuid_str = uuid_str.strip()
-    
-    # Check length (UUID should be exactly 36 characters)
-    if len(uuid_str) != 36:
-        raise ValueError(f'Invalid UUID format: {uuid_str}')
-    
-    # Validate UUID format
-    try:
-        import uuid
-        uuid.UUID(uuid_str)
-        return uuid_str
-    except ValueError:
-        raise ValueError(f'Invalid UUID format: {uuid_str}')
-
-
 # =============================================================================
 # EXPORTS
 # =============================================================================
@@ -479,7 +403,5 @@ __all__ = [
     'sanitize_html_content',
     'sanitize_error_message',
     'sanitize_url_list',
-    'sanitize_proxy_list',
-    'sanitize_uuid',
     'is_safe_character'
 ] 

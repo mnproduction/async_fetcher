@@ -347,7 +347,7 @@ class TestCleanupEndpoint:
         """Test successful cleanup of expired cookies."""
         # Mock the global fetcher variable
         mock_fetcher = MagicMock()
-        mock_fetcher.cookie_manager.cleanup_stale_sessions = AsyncMock(return_value=3)  # 3 sessions cleaned up
+        mock_fetcher.cleanup_stale_cookies = AsyncMock(return_value=3)  # 3 sessions cleaned up
 
         with patch('api.main.fetcher', mock_fetcher):
             response = test_client.post("/cleanup")
@@ -355,17 +355,17 @@ class TestCleanupEndpoint:
             assert response.status_code == 200
             data = response.json()
             assert data["message"] == "Cleanup completed"
-            assert data["removed_sessions"] == 3
+            assert data["sessions_cleaned"] == 3
 
     def test_cleanup_no_expired(self, test_client):
         """Test cleanup when no expired sessions exist."""
         # Mock the global fetcher variable
         mock_fetcher = MagicMock()
-        mock_fetcher.cookie_manager.cleanup_stale_sessions = AsyncMock(return_value=0)  # No sessions cleaned up
+        mock_fetcher.cleanup_stale_cookies = AsyncMock(return_value=0)  # No sessions cleaned up
 
         with patch('api.main.fetcher', mock_fetcher):
             response = test_client.post("/cleanup")
 
             assert response.status_code == 200
             data = response.json()
-            assert data["removed_sessions"] == 0
+            assert data["sessions_cleaned"] == 0

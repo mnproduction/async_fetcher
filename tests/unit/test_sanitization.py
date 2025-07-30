@@ -19,8 +19,8 @@ Version: 1.0.0
 import pytest
 from api.sanitization import (
     sanitize_url, sanitize_proxy_url, sanitize_html_content,
-    sanitize_error_message, sanitize_uuid, sanitize_url_list,
-    sanitize_proxy_list, sanitize_string, is_safe_character
+    sanitize_error_message, sanitize_url_list,
+    sanitize_string, is_safe_character
 )
 
 
@@ -382,44 +382,6 @@ class TestErrorMessageSanitization:
 # UUID SANITIZATION TESTS
 # =============================================================================
 
-class TestUuidSanitization:
-    """Test UUID sanitization functions."""
-    
-    def test_sanitize_uuid_valid(self):
-        """Test sanitization of valid UUIDs."""
-        valid_uuids = [
-            "550e8400-e29b-41d4-a716-446655440000",
-            "123e4567-e89b-12d3-a456-426614174000",
-            "a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d8"
-        ]
-        
-        for uuid_str in valid_uuids:
-            sanitized = sanitize_uuid(uuid_str)
-            assert sanitized == uuid_str
-    
-    def test_sanitize_uuid_invalid_format(self):
-        """Test sanitization of invalid UUIDs."""
-        invalid_uuids = [
-            "not-a-uuid",
-            "550e8400-e29b-41d4-a716-44665544000",  # Too short
-            "550e8400-e29b-41d4-a716-4466554400000",  # Too long
-            "550e8400-e29b-41d4-a716-44665544000g",  # Invalid character
-            "550e8400-e29b-41d4-a716-44665544000"  # Missing character
-        ]
-        
-        for uuid_str in invalid_uuids:
-            with pytest.raises(ValueError) as exc_info:
-                sanitize_uuid(uuid_str)
-            assert "Invalid UUID format" in str(exc_info.value)
-    
-    def test_sanitize_uuid_whitespace(self):
-        """Test UUID sanitization with whitespace."""
-        uuid_with_whitespace = "  550e8400-e29b-41d4-a716-446655440000  "
-        sanitized = sanitize_uuid(uuid_with_whitespace)
-        
-        assert sanitized == "550e8400-e29b-41d4-a716-446655440000"
-
-
 # =============================================================================
 # LIST SANITIZATION TESTS
 # =============================================================================
@@ -472,50 +434,4 @@ class TestListSanitization:
         
         with pytest.raises(ValueError) as exc_info:
             sanitize_url_list(urls)
-        assert "List should have at most 1000 items" in str(exc_info.value)
-    
-    def test_sanitize_proxy_list_valid(self):
-        """Test sanitization of valid proxy list."""
-        proxies = [
-            "http://proxy1.example.com:8080",
-            "https://proxy2.example.com:3128",
-            "socks5://proxy3.example.com:1080"
-        ]
-        sanitized = sanitize_proxy_list(proxies)
-        
-        assert len(sanitized) == 3
-        assert "http://proxy1.example.com:8080" in sanitized
-        assert "https://proxy2.example.com:3128" in sanitized
-        assert "socks5://proxy3.example.com:1080" in sanitized
-    
-    def test_sanitize_proxy_list_with_duplicates(self):
-        """Test proxy list sanitization with duplicates."""
-        proxies = [
-            "http://proxy1.example.com:8080",
-            "http://proxy1.example.com:8080",  # Duplicate
-            "https://proxy2.example.com:3128"
-        ]
-        
-        with pytest.raises(ValueError) as exc_info:
-            sanitize_proxy_list(proxies)
-        assert "Duplicate proxy URL" in str(exc_info.value)
-    
-    def test_sanitize_proxy_list_with_invalid_proxies(self):
-        """Test proxy list sanitization with invalid proxies."""
-        proxies = [
-            "http://proxy1.example.com:8080",
-            "invalid-proxy",
-            "https://proxy2.example.com:3128"
-        ]
-        
-        with pytest.raises(ValueError) as exc_info:
-            sanitize_proxy_list(proxies)
-        assert "Invalid proxy URL format" in str(exc_info.value)
-    
-    def test_sanitize_proxy_list_too_long(self):
-        """Test proxy list sanitization with too many proxies."""
-        proxies = [f"http://proxy{i}.example.com:8080" for i in range(51)]
-        
-        with pytest.raises(ValueError) as exc_info:
-            sanitize_proxy_list(proxies)
-        assert "List should have at most 50 items" in str(exc_info.value) 
+        assert "List should have at most 1000 items" in str(exc_info.value) 
