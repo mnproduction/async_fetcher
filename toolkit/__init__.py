@@ -1,1 +1,1 @@
-# Toolkit package for browser automation 
+# Toolkit package for browser automation

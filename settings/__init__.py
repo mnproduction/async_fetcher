@@ -1,1 +1,1 @@
-# Settings package for configuration and logging 
+# Settings package for configuration and logging

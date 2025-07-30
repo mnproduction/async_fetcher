@@ -16,29 +16,26 @@ Author: Simplified Content Fetcher
 Version: 2.0.0
 """
 
-import pytest
-import pytest_asyncio
 import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 # Import application modules
 from api.main import app
-from api.models import (
-    SingleFetchRequest, BatchFetchRequest, FetchResult,
-    BatchFetchResponse
-)
-from toolkit.flaresolverr import FlareSolverrClient
+from api.models import BatchFetchRequest, BatchFetchResponse, FetchResult, SingleFetchRequest
 from toolkit.cookie_manager import CookieManager, CookieSession
+from toolkit.flaresolverr import FlareSolverrClient
 from toolkit.simple_fetcher import SimpleFetcher
-
 
 # =============================================================================
 # TEST CLIENT FIXTURES
 # =============================================================================
+
 
 @pytest.fixture
 def test_client():
@@ -61,16 +58,14 @@ async def async_client():
     """
     from httpx import ASGITransport
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
 
 # =============================================================================
 # SAMPLE DATA FIXTURES
 # =============================================================================
+
 
 @pytest.fixture
 def sample_single_fetch_request():
@@ -80,10 +75,7 @@ def sample_single_fetch_request():
     Returns:
         SingleFetchRequest: Sample single fetch request
     """
-    return SingleFetchRequest(
-        url="https://example.com",
-        force_refresh_cookies=False
-    )
+    return SingleFetchRequest(url="https://example.com", force_refresh_cookies=False)
 
 
 @pytest.fixture
@@ -97,7 +89,7 @@ def sample_batch_fetch_request():
     return BatchFetchRequest(
         urls=["https://example.com", "https://test.com", "https://sample.org"],
         max_concurrent=3,
-        force_refresh_cookies=False
+        force_refresh_cookies=False,
     )
 
 
@@ -118,7 +110,7 @@ def sample_fetch_result_success():
         execution_time=1.25,
         used_cookies=True,
         cookies_refreshed=False,
-        error=None
+        error=None,
     )
 
 
@@ -139,7 +131,7 @@ def sample_fetch_result_error():
         execution_time=30.0,
         used_cookies=False,
         cookies_refreshed=False,
-        error="Connection timeout after 30 seconds"
+        error="Connection timeout after 30 seconds",
     )
 
 
@@ -166,7 +158,7 @@ def sample_batch_response():
                 status_code=200,
                 execution_time=1.5,
                 used_cookies=True,
-                cookies_refreshed=False
+                cookies_refreshed=False,
             ),
             FetchResult(
                 url="https://test.com",
@@ -176,7 +168,7 @@ def sample_batch_response():
                 status_code=200,
                 execution_time=2.0,
                 used_cookies=True,
-                cookies_refreshed=False
+                cookies_refreshed=False,
             ),
             FetchResult(
                 url="https://broken.com",
@@ -187,15 +179,16 @@ def sample_batch_response():
                 execution_time=2.0,
                 used_cookies=False,
                 cookies_refreshed=False,
-                error="Connection failed"
-            )
-        ]
+                error="Connection failed",
+            ),
+        ],
     )
 
 
 # =============================================================================
 # MOCK FIXTURES
 # =============================================================================
+
 
 @pytest.fixture
 def mock_flaresolverr_client():
@@ -206,22 +199,26 @@ def mock_flaresolverr_client():
         MagicMock: Mock FlareSolverr client
     """
     mock = MagicMock(spec=FlareSolverrClient)
-    mock.health_check = AsyncMock(return_value={
-        "status": "ok",
-        "version": "3.3.25",
-        "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36..."
-    })
-    mock.solve_challenge = AsyncMock(return_value={
-        "solution": {
-            "url": "https://example.com",
-            "status": 200,
-            "cookies": [
-                {"name": "cf_clearance", "value": "test_token", "domain": "example.com"},
-                {"name": "session_id", "value": "abc123", "domain": "example.com"}
-            ],
-            "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36..."
+    mock.health_check = AsyncMock(
+        return_value={
+            "status": "ok",
+            "version": "3.3.25",
+            "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36...",
         }
-    })
+    )
+    mock.solve_challenge = AsyncMock(
+        return_value={
+            "solution": {
+                "url": "https://example.com",
+                "status": 200,
+                "cookies": [
+                    {"name": "cf_clearance", "value": "test_token", "domain": "example.com"},
+                    {"name": "session_id", "value": "abc123", "domain": "example.com"},
+                ],
+                "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36...",
+            }
+        }
+    )
     return mock
 
 
@@ -234,28 +231,32 @@ def mock_cookie_manager():
         MagicMock: Mock cookie manager
     """
     mock = MagicMock(spec=CookieManager)
-    mock.get_session = MagicMock(return_value=CookieSession(
-        domain="example.com",
-        cookies_dict={"cf_clearance": "test_token", "session_id": "abc123"},
-        cookies_list=[{"name": "cf_clearance", "value": "test_token"}],
-        user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36...",
-        created_at=time.time(),
-        expires_at=time.time() + 1800,
-        last_used=time.time()
-    ))
+    mock.get_session = MagicMock(
+        return_value=CookieSession(
+            domain="example.com",
+            cookies_dict={"cf_clearance": "test_token", "session_id": "abc123"},
+            cookies_list=[{"name": "cf_clearance", "value": "test_token"}],
+            user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36...",
+            created_at=time.time(),
+            expires_at=time.time() + 1800,
+            last_used=time.time(),
+        )
+    )
     mock.save_session = MagicMock()
     mock.is_session_valid = MagicMock(return_value=True)
     mock.cleanup_expired = MagicMock()
-    mock.get_session_info = MagicMock(return_value={
-        "cached_domains": 1,
-        "sessions": {
-            "example.com": {
-                "cookies_count": 2,
-                "age_seconds": 300.0,
-                "user_agent": "Mozilla/5.0..."
-            }
+    mock.get_session_info = MagicMock(
+        return_value={
+            "cached_domains": 1,
+            "sessions": {
+                "example.com": {
+                    "cookies_count": 2,
+                    "age_seconds": 300.0,
+                    "user_agent": "Mozilla/5.0...",
+                }
+            },
         }
-    })
+    )
     return mock
 
 
@@ -268,51 +269,56 @@ def mock_simple_fetcher():
         MagicMock: Mock simple fetcher
     """
     mock = MagicMock(spec=SimpleFetcher)
-    mock.fetch_single = AsyncMock(return_value=FetchResult(
-        url="https://example.com",
-        success=True,
-        content="<html><body>Test content</body></html>",
-        content_length=35,
-        status_code=200,
-        execution_time=1.5,
-        used_cookies=True,
-        cookies_refreshed=False
-    ))
-    mock.fetch_batch = AsyncMock(return_value=BatchFetchResponse(
-        total_urls=2,
-        successful_urls=2,
-        failed_urls=0,
-        success_rate=100.0,
-        total_execution_time=3.0,
-        results=[
-            FetchResult(
-                url="https://example.com",
-                success=True,
-                content="<html>Example</html>",
-                content_length=20,
-                status_code=200,
-                execution_time=1.5,
-                used_cookies=True,
-                cookies_refreshed=False
-            ),
-            FetchResult(
-                url="https://test.com",
-                success=True,
-                content="<html>Test</html>",
-                content_length=17,
-                status_code=200,
-                execution_time=1.5,
-                used_cookies=True,
-                cookies_refreshed=False
-            )
-        ]
-    ))
+    mock.fetch_single = AsyncMock(
+        return_value=FetchResult(
+            url="https://example.com",
+            success=True,
+            content="<html><body>Test content</body></html>",
+            content_length=35,
+            status_code=200,
+            execution_time=1.5,
+            used_cookies=True,
+            cookies_refreshed=False,
+        )
+    )
+    mock.fetch_batch = AsyncMock(
+        return_value=BatchFetchResponse(
+            total_urls=2,
+            successful_urls=2,
+            failed_urls=0,
+            success_rate=100.0,
+            total_execution_time=3.0,
+            results=[
+                FetchResult(
+                    url="https://example.com",
+                    success=True,
+                    content="<html>Example</html>",
+                    content_length=20,
+                    status_code=200,
+                    execution_time=1.5,
+                    used_cookies=True,
+                    cookies_refreshed=False,
+                ),
+                FetchResult(
+                    url="https://test.com",
+                    success=True,
+                    content="<html>Test</html>",
+                    content_length=17,
+                    status_code=200,
+                    execution_time=1.5,
+                    used_cookies=True,
+                    cookies_refreshed=False,
+                ),
+            ],
+        )
+    )
     return mock
 
 
 # =============================================================================
 # UTILITY FIXTURES
 # =============================================================================
+
 
 @pytest.fixture
 def sample_urls():
@@ -327,7 +333,7 @@ def sample_urls():
         "https://test.com",
         "https://sample.org",
         "https://demo.net",
-        "https://httpbin.org/html"
+        "https://httpbin.org/html",
     ]
 
 
@@ -344,7 +350,7 @@ def invalid_urls():
         "javascript:alert('xss')",
         "data:text/html,<script>alert('xss')</script>",
         "ftp://example.com",
-        "http://" + "a" * 3000  # Too long URL
+        "http://" + "a" * 3000,  # Too long URL
     ]
 
 
@@ -393,6 +399,7 @@ def mock_aiohttp_session():
 # ASYNC EVENT LOOP FIXTURES
 # =============================================================================
 
+
 @pytest.fixture(scope="session")
 def event_loop():
     """
@@ -417,6 +424,7 @@ def event_loop():
 # INTEGRATION TEST FIXTURES
 # =============================================================================
 
+
 @pytest.fixture
 def api_test_data():
     """
@@ -426,23 +434,17 @@ def api_test_data():
         Dict: Comprehensive test data
     """
     return {
-        "valid_single_request": {
-            "url": "https://example.com",
-            "force_refresh_cookies": False
-        },
+        "valid_single_request": {"url": "https://example.com", "force_refresh_cookies": False},
         "valid_batch_request": {
             "urls": ["https://example.com", "https://test.com"],
             "max_concurrent": 2,
-            "force_refresh_cookies": False
+            "force_refresh_cookies": False,
         },
-        "invalid_single_request": {
-            "url": "not-a-url",
-            "force_refresh_cookies": False
-        },
+        "invalid_single_request": {"url": "not-a-url", "force_refresh_cookies": False},
         "invalid_batch_request": {
             "urls": [],  # Empty URLs
-            "max_concurrent": 0  # Invalid concurrency
-        }
+            "max_concurrent": 0,  # Invalid concurrency
+        },
     }
 
 
@@ -459,7 +461,7 @@ def expected_responses():
             "service": "SimpleFetcher",
             "status": "healthy",
             "flaresolverr_healthy": True,
-            "cached_domains": 0
+            "cached_domains": 0,
         },
         "single_fetch_success": {
             "url": "https://example.com",
@@ -467,12 +469,12 @@ def expected_responses():
             "content_length": 1000,
             "status_code": 200,
             "used_cookies": True,
-            "cookies_refreshed": False
+            "cookies_refreshed": False,
         },
         "batch_fetch_success": {
             "total_urls": 2,
             "successful_urls": 2,
             "failed_urls": 0,
-            "success_rate": 100.0
-        }
+            "success_rate": 100.0,
+        },
     }

@@ -7,14 +7,17 @@ Simplified Content Fetcher.
 
 import pytest
 from pydantic import ValidationError
+
 from api.models import (
-    SingleFetchRequest, BatchFetchRequest, FetchResult,
-    BatchFetchResponse, HealthResponse
+    BatchFetchRequest,
+    BatchFetchResponse,
+    FetchResult,
+    HealthResponse,
+    SingleFetchRequest,
 )
 
 # Mark all tests in this file as unit tests
 pytestmark = [pytest.mark.unit, pytest.mark.fast, pytest.mark.mock]
-
 
 
 class TestSingleFetchRequest:
@@ -22,10 +25,7 @@ class TestSingleFetchRequest:
 
     def test_valid_single_fetch_request(self):
         """Test valid SingleFetchRequest creation."""
-        request = SingleFetchRequest(
-            url="https://example.com",
-            force_refresh_cookies=False
-        )
+        request = SingleFetchRequest(url="https://example.com", force_refresh_cookies=False)
 
         assert request.url == "https://example.com"
         assert request.force_refresh_cookies is False
@@ -56,7 +56,7 @@ class TestBatchFetchRequest:
         request = BatchFetchRequest(
             urls=["https://example.com", "https://test.com"],
             max_concurrent=2,
-            force_refresh_cookies=False
+            force_refresh_cookies=False,
         )
 
         assert len(request.urls) == 2
@@ -79,10 +79,7 @@ class TestBatchFetchRequest:
     def test_invalid_max_concurrent(self):
         """Test BatchFetchRequest with invalid max_concurrent."""
         with pytest.raises(ValidationError):
-            BatchFetchRequest(
-                urls=["https://example.com"],
-                max_concurrent=0
-            )
+            BatchFetchRequest(urls=["https://example.com"], max_concurrent=0)
 
 
 class TestFetchResult:
@@ -98,7 +95,7 @@ class TestFetchResult:
             status_code=200,
             execution_time=1.5,
             used_cookies=True,
-            cookies_refreshed=False
+            cookies_refreshed=False,
         )
 
         assert result.url == "https://example.com"
@@ -122,7 +119,7 @@ class TestFetchResult:
             execution_time=5.0,
             used_cookies=False,
             cookies_refreshed=False,
-            error="Connection failed"
+            error="Connection failed",
         )
 
         assert result.url == "https://broken.com"
@@ -150,7 +147,7 @@ class TestBatchFetchResponse:
                 status_code=200,
                 execution_time=1.0,
                 used_cookies=True,
-                cookies_refreshed=False
+                cookies_refreshed=False,
             ),
             FetchResult(
                 url="https://broken.com",
@@ -161,8 +158,8 @@ class TestBatchFetchResponse:
                 execution_time=2.0,
                 used_cookies=False,
                 cookies_refreshed=False,
-                error="Connection failed"
-            )
+                error="Connection failed",
+            ),
         ]
 
         response = BatchFetchResponse(
@@ -171,7 +168,7 @@ class TestBatchFetchResponse:
             failed_urls=1,
             success_rate=50.0,
             total_execution_time=3.0,
-            results=results
+            results=results,
         )
 
         assert response.total_urls == 2
@@ -192,7 +189,7 @@ class TestHealthResponse:
             status="healthy",
             flaresolverr_healthy=True,
             cached_domains=5,
-            timestamp=1234567890.0
+            timestamp=1234567890.0,
         )
 
         assert response.service == "SimpleFetcher"
@@ -210,7 +207,7 @@ class TestHealthResponse:
             flaresolverr_healthy=False,
             cached_domains=0,
             timestamp=1234567890.0,
-            error="FlareSolverr connection failed"
+            error="FlareSolverr connection failed",
         )
 
         assert response.service == "SimpleFetcher"

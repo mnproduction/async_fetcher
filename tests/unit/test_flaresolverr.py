@@ -5,10 +5,17 @@ This module tests the FlareSolverr client functionality including
 health checks, challenge solving, and error handling.
 """
 
-import pytest
-import aiohttp
 from unittest.mock import AsyncMock, MagicMock, patch
-from toolkit.flaresolverr import FlareSolverrClient, FlareSolverrError, FlareSolverrConnectionError, FlareSolverrTimeoutError
+
+import aiohttp
+import pytest
+
+from toolkit.flaresolverr import (
+    FlareSolverrClient,
+    FlareSolverrConnectionError,
+    FlareSolverrError,
+    FlareSolverrTimeoutError,
+)
 
 # Mark all tests in this file as unit tests
 pytestmark = [pytest.mark.unit, pytest.mark.fast, pytest.mark.mock]
@@ -27,17 +34,19 @@ class TestFlareSolverrClient:
         """Test successful health check."""
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.json = AsyncMock(return_value={
-            "msg": "FlareSolverr is ready!",
-            "version": "3.3.25",
-            "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36..."
-        })
-        
-        with patch('aiohttp.ClientSession.get') as mock_get:
+        mock_response.json = AsyncMock(
+            return_value={
+                "msg": "FlareSolverr is ready!",
+                "version": "3.3.25",
+                "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36...",
+            }
+        )
+
+        with patch("aiohttp.ClientSession.get") as mock_get:
             mock_get.return_value.__aenter__.return_value = mock_response
-            
+
             result = await client.health_check()
-            
+
             assert result is True
             # Check that the call was made with the correct URL (ignore timeout parameter)
             mock_get.assert_called_once()
@@ -47,9 +56,9 @@ class TestFlareSolverrClient:
     @pytest.mark.asyncio
     async def test_health_check_failure(self, client):
         """Test health check failure."""
-        with patch('aiohttp.ClientSession.get') as mock_get:
+        with patch("aiohttp.ClientSession.get") as mock_get:
             mock_get.side_effect = aiohttp.ClientError("Connection failed")
-            
+
             result = await client.health_check()
             assert result is False
 
@@ -58,14 +67,13 @@ class TestFlareSolverrClient:
         """Test health check with invalid response."""
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.json = AsyncMock(return_value={
-            "msg": "Service not ready",
-            "version": "3.3.25"
-        })
-        
-        with patch('aiohttp.ClientSession.get') as mock_get:
+        mock_response.json = AsyncMock(
+            return_value={"msg": "Service not ready", "version": "3.3.25"}
+        )
+
+        with patch("aiohttp.ClientSession.get") as mock_get:
             mock_get.return_value.__aenter__.return_value = mock_response
-            
+
             result = await client.health_check()
             assert result is False
 
@@ -80,17 +88,17 @@ class TestFlareSolverrClient:
                 "status": 200,
                 "cookies": [
                     {"name": "cf_clearance", "value": "test_token", "domain": "example.com"},
-                    {"name": "session_id", "value": "abc123", "domain": "example.com"}
+                    {"name": "session_id", "value": "abc123", "domain": "example.com"},
                 ],
-                "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36..."
-            }
+                "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36...",
+            },
         }
-        
-        with patch.object(client, '_make_request') as mock_request:
+
+        with patch.object(client, "_make_request") as mock_request:
             mock_request.return_value = mock_response
-            
+
             result = await client.solve_challenge("https://example.com")
-            
+
             assert result["url"] == "https://example.com"
             assert result["status"] == 200
             assert len(result["cookies"]) == 2
@@ -99,23 +107,20 @@ class TestFlareSolverrClient:
     @pytest.mark.asyncio
     async def test_solve_challenge_failure(self, client):
         """Test challenge solving failure."""
-        mock_response = {
-            "status": "error",
-            "message": "Challenge solving failed"
-        }
-        
-        with patch.object(client, '_make_request') as mock_request:
+        mock_response = {"status": "error", "message": "Challenge solving failed"}
+
+        with patch.object(client, "_make_request") as mock_request:
             mock_request.return_value = mock_response
-            
+
             with pytest.raises(FlareSolverrError, match="Failed to solve challenge"):
                 await client.solve_challenge("https://example.com")
 
     @pytest.mark.asyncio
     async def test_solve_challenge_timeout(self, client):
         """Test challenge solving timeout."""
-        with patch.object(client, '_make_request') as mock_request:
+        with patch.object(client, "_make_request") as mock_request:
             mock_request.side_effect = FlareSolverrTimeoutError("Request to FlareSolverr timed out")
-            
+
             with pytest.raises(FlareSolverrTimeoutError, match="Request to FlareSolverr timed out"):
                 await client.solve_challenge("https://example.com", timeout=5)
 
@@ -124,20 +129,20 @@ class TestFlareSolverrClient:
         """Test that solve_challenge sends correct payload."""
         mock_response = {
             "status": "ok",
-            "solution": {"url": "https://example.com", "status": 200, "cookies": []}
+            "solution": {"url": "https://example.com", "status": 200, "cookies": []},
         }
-        
-        with patch.object(client, '_make_request') as mock_request:
+
+        with patch.object(client, "_make_request") as mock_request:
             mock_request.return_value = mock_response
-            
+
             await client.solve_challenge("https://example.com", timeout=30)
-            
+
             # Verify the request payload
             call_args = mock_request.call_args
             payload = call_args[0][0]
-            assert payload['cmd'] == 'request.get'
-            assert payload['url'] == 'https://example.com'
-            assert payload['maxTimeout'] == 30  # Timeout is passed as-is to the method
+            assert payload["cmd"] == "request.get"
+            assert payload["url"] == "https://example.com"
+            assert payload["maxTimeout"] == 30  # Timeout is passed as-is to the method
 
     @pytest.mark.asyncio
     async def test_get_cookies_for_domain(self, client):
@@ -147,16 +152,16 @@ class TestFlareSolverrClient:
             "status": 200,
             "cookies": [
                 {"name": "cf_clearance", "value": "test_token", "domain": "example.com"},
-                {"name": "session_id", "value": "abc123", "domain": "example.com"}
+                {"name": "session_id", "value": "abc123", "domain": "example.com"},
             ],
-            "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36..."
+            "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36...",
         }
-        
-        with patch.object(client, 'solve_challenge') as mock_solve:
+
+        with patch.object(client, "solve_challenge") as mock_solve:
             mock_solve.return_value = mock_solution
-            
+
             result = await client.get_cookies_for_domain("https://example.com")
-            
+
             assert result["cookies_dict"]["cf_clearance"] == "test_token"
             assert result["cookies_dict"]["session_id"] == "abc123"
             assert result["cookies_list"] == mock_solution["cookies"]
@@ -168,57 +173,54 @@ class TestFlareSolverrClient:
     @pytest.mark.asyncio
     async def test_create_session(self, client):
         """Test creating a session."""
-        mock_response = {
-            "status": "ok",
-            "message": "",
-            "session": "test_session_id"
-        }
-        
-        with patch.object(client, '_make_request') as mock_request:
+        mock_response = {"status": "ok", "message": "", "session": "test_session_id"}
+
+        with patch.object(client, "_make_request") as mock_request:
             mock_request.return_value = mock_response
-            
+
             result = await client.create_session("test_session_id")
-            
+
             assert result is True
             call_args = mock_request.call_args
             payload = call_args[0][0]
-            assert payload['cmd'] == 'sessions.create'
-            assert payload['session'] == 'test_session_id'
+            assert payload["cmd"] == "sessions.create"
+            assert payload["session"] == "test_session_id"
 
     @pytest.mark.asyncio
     async def test_destroy_session(self, client):
         """Test destroying a session."""
-        mock_response = {
-            "status": "ok",
-            "message": ""
-        }
-        
-        with patch.object(client, '_make_request') as mock_request:
+        mock_response = {"status": "ok", "message": ""}
+
+        with patch.object(client, "_make_request") as mock_request:
             mock_request.return_value = mock_response
-            
+
             result = await client.destroy_session("test_session_id")
-            
+
             assert result is True
             call_args = mock_request.call_args
             payload = call_args[0][0]
-            assert payload['cmd'] == 'sessions.destroy'
-            assert payload['session'] == 'test_session_id'
+            assert payload["cmd"] == "sessions.destroy"
+            assert payload["session"] == "test_session_id"
 
     @pytest.mark.asyncio
     async def test_http_error_handling(self, client):
         """Test HTTP error handling."""
-        with patch.object(client, '_make_request') as mock_request:
-            mock_request.side_effect = FlareSolverrConnectionError("HTTP 500: Internal Server Error")
-            
+        with patch.object(client, "_make_request") as mock_request:
+            mock_request.side_effect = FlareSolverrConnectionError(
+                "HTTP 500: Internal Server Error"
+            )
+
             with pytest.raises(FlareSolverrConnectionError, match="HTTP 500"):
                 await client.solve_challenge("https://example.com")
 
     @pytest.mark.asyncio
     async def test_connection_error_handling(self, client):
         """Test connection error handling."""
-        with patch.object(client, '_make_request') as mock_request:
-            mock_request.side_effect = FlareSolverrConnectionError("Connection error: Network unreachable")
-            
+        with patch.object(client, "_make_request") as mock_request:
+            mock_request.side_effect = FlareSolverrConnectionError(
+                "Connection error: Network unreachable"
+            )
+
             with pytest.raises(FlareSolverrConnectionError, match="Connection error"):
                 await client.solve_challenge("https://example.com")
 

@@ -5,9 +5,11 @@ This module tests the cookie management functionality including
 session storage, validation, expiration, and cleanup.
 """
 
-import pytest
 import time
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from toolkit.cookie_manager import CookieManager, CookieSession
 
 # Mark all tests in this file as unit tests
@@ -26,7 +28,7 @@ class TestCookieSession:
             user_agent="Mozilla/5.0...",
             created_at=1234567890.0,
             expires_at=1234567890.0 + 1800,  # 30 minutes later
-            last_used=1234567890.0
+            last_used=1234567890.0,
         )
 
         assert session.domain == "example.com"
@@ -37,7 +39,7 @@ class TestCookieSession:
     def test_cookie_session_is_expired(self):
         """Test cookie session expiration check."""
         current_time = time.time()
-        
+
         # Fresh session (not expired)
         fresh_session = CookieSession(
             domain="example.com",
@@ -46,7 +48,7 @@ class TestCookieSession:
             user_agent="Mozilla/5.0...",
             created_at=current_time - 300,  # 5 minutes ago
             expires_at=current_time + 1500,  # 25 minutes from now
-            last_used=current_time - 300
+            last_used=current_time - 300,
         )
         assert not fresh_session.is_expired()  # Should not be expired
 
@@ -57,15 +59,15 @@ class TestCookieSession:
             cookies_list=[{"name": "test", "value": "value"}],
             user_agent="Mozilla/5.0...",
             created_at=current_time - 2000,  # 33+ minutes ago
-            expires_at=current_time - 200,   # Expired 200 seconds ago
-            last_used=current_time - 2000
+            expires_at=current_time - 200,  # Expired 200 seconds ago
+            last_used=current_time - 2000,
         )
         assert old_session.is_expired()  # Should be expired
 
     def test_cookie_session_is_stale(self):
         """Test cookie session staleness check."""
         current_time = time.time()
-        
+
         # Fresh session (not stale)
         fresh_session = CookieSession(
             domain="example.com",
@@ -74,7 +76,7 @@ class TestCookieSession:
             user_agent="Mozilla/5.0...",
             created_at=current_time - 300,
             expires_at=current_time + 1500,
-            last_used=current_time - 100  # Used recently
+            last_used=current_time - 100,  # Used recently
         )
         assert not fresh_session.is_stale()  # Should not be stale
 
@@ -86,7 +88,7 @@ class TestCookieSession:
             user_agent="Mozilla/5.0...",
             created_at=current_time - 2000,
             expires_at=current_time + 1500,
-            last_used=current_time - 2000  # Used long ago
+            last_used=current_time - 2000,  # Used long ago
         )
         assert stale_session.is_stale()  # Should be stale
 
@@ -100,12 +102,12 @@ class TestCookieSession:
             user_agent="Mozilla/5.0...",
             created_at=current_time,
             expires_at=current_time + 1800,
-            last_used=current_time - 1000
+            last_used=current_time - 1000,
         )
-        
+
         original_last_used = session.last_used
         session.touch()
-        
+
         assert session.last_used > original_last_used
 
     def test_cookie_session_serialization(self):
@@ -117,14 +119,14 @@ class TestCookieSession:
             user_agent="Mozilla/5.0...",
             created_at=1234567890.0,
             expires_at=1234567890.0 + 1800,
-            last_used=1234567890.0
+            last_used=1234567890.0,
         )
-        
+
         # Test to_dict
         session_dict = session.to_dict()
         assert session_dict["domain"] == "example.com"
         assert session_dict["cookies_dict"] == {"test": "value"}
-        
+
         # Test from_dict
         restored_session = CookieSession.from_dict(session_dict)
         assert restored_session.domain == session.domain
@@ -141,7 +143,7 @@ class TestCookieManager:
         mock_flaresolverr = MagicMock()
         return CookieManager(
             flaresolverr_client=mock_flaresolverr,
-            max_stale_seconds=1800  # 30 minutes
+            max_stale_seconds=1800,  # 30 minutes
         )
 
     @pytest.fixture
@@ -155,7 +157,7 @@ class TestCookieManager:
             user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36...",
             created_at=current_time,
             expires_at=current_time + 1800,
-            last_used=current_time
+            last_used=current_time,
         )
 
     def test_extract_domain_from_url(self, manager):
@@ -176,12 +178,12 @@ class TestCookieManager:
         mock_cookie_data = {
             "cookies_dict": {"cf_clearance": "test_token"},
             "cookies_list": [{"name": "cf_clearance", "value": "test_token"}],
-            "user_agent": "Mozilla/5.0..."
+            "user_agent": "Mozilla/5.0...",
         }
         manager.flaresolverr.get_cookies_for_domain = AsyncMock(return_value=mock_cookie_data)
-        
+
         session = await manager.get_session("https://example.com")
-        
+
         assert session.domain == "example.com"
         assert session.cookies_dict == {"cf_clearance": "test_token"}
         assert session.user_agent == "Mozilla/5.0..."
@@ -191,9 +193,9 @@ class TestCookieManager:
         """Test getting an existing valid session."""
         # Manually add session to internal storage
         manager._sessions["example.com"] = sample_session
-        
+
         session = await manager.get_session("https://example.com")
-        
+
         assert session.domain == "example.com"
         assert session.cookies_dict == sample_session.cookies_dict
 
@@ -202,17 +204,17 @@ class TestCookieManager:
         """Test force refresh of existing session."""
         # Manually add session to internal storage
         manager._sessions["example.com"] = sample_session
-        
+
         # Mock FlareSolverr response for refresh
         mock_cookie_data = {
             "cookies_dict": {"cf_clearance": "new_token"},
             "cookies_list": [{"name": "cf_clearance", "value": "new_token"}],
-            "user_agent": "New User Agent"
+            "user_agent": "New User Agent",
         }
         manager.flaresolverr.get_cookies_for_domain = AsyncMock(return_value=mock_cookie_data)
-        
+
         session = await manager.get_session("https://example.com", force_refresh=True)
-        
+
         assert session.cookies_dict == {"cf_clearance": "new_token"}
         assert session.user_agent == "New User Agent"
 
@@ -220,18 +222,18 @@ class TestCookieManager:
     async def test_get_cookies_dict(self, manager, sample_session):
         """Test getting cookies dictionary."""
         manager._sessions["example.com"] = sample_session
-        
+
         cookies = await manager.get_cookies_dict("https://example.com")
-        
+
         assert cookies == {"cf_clearance": "test_token", "session_id": "abc123"}
 
     @pytest.mark.asyncio
     async def test_get_headers(self, manager, sample_session):
         """Test getting headers with user agent and standard headers."""
         manager._sessions["example.com"] = sample_session
-        
+
         headers = await manager.get_headers("https://example.com")
-        
+
         assert "User-Agent" in headers
         assert "Accept" in headers
         assert "Accept-Language" in headers
@@ -242,16 +244,16 @@ class TestCookieManager:
     async def test_invalidate_domain(self, manager, sample_session):
         """Test invalidating a domain's session."""
         manager._sessions["example.com"] = sample_session
-        
+
         await manager.invalidate_domain("https://example.com")
-        
+
         assert "example.com" not in manager._sessions
 
     @pytest.mark.asyncio
     async def test_cleanup_stale_sessions(self, manager):
         """Test cleanup of stale sessions."""
         current_time = time.time()
-        
+
         # Add fresh session
         fresh_session = CookieSession(
             domain="fresh.com",
@@ -260,10 +262,10 @@ class TestCookieManager:
             user_agent="Mozilla/5.0...",
             created_at=current_time,
             expires_at=current_time + 1800,
-            last_used=current_time - 100  # Used recently
+            last_used=current_time - 100,  # Used recently
         )
         manager._sessions["fresh.com"] = fresh_session
-        
+
         # Add stale session
         stale_session = CookieSession(
             domain="stale.com",
@@ -272,13 +274,13 @@ class TestCookieManager:
             user_agent="Mozilla/5.0...",
             created_at=current_time - 2000,
             expires_at=current_time + 1800,
-            last_used=current_time - 2000  # Used long ago
+            last_used=current_time - 2000,  # Used long ago
         )
         manager._sessions["stale.com"] = stale_session
-        
+
         # Cleanup should remove only stale session
         removed_count = await manager.cleanup_stale_sessions()
-        
+
         assert removed_count == 1
         assert "fresh.com" in manager._sessions
         assert "stale.com" not in manager._sessions
@@ -287,11 +289,11 @@ class TestCookieManager:
     async def test_get_session_info(self, manager, sample_session):
         """Test getting session information."""
         manager._sessions["example.com"] = sample_session
-        
+
         info = await manager.get_session_info()
-        
+
         assert "example.com" in info
-        
+
         session_info = info["example.com"]
         assert session_info["cookies_count"] == 2
         assert "Mozilla/5.0" in session_info["user_agent"]
@@ -303,7 +305,7 @@ class TestCookieManager:
     async def test_get_session_info_empty(self, manager):
         """Test getting session information when no sessions exist."""
         info = await manager.get_session_info()
-        
+
         assert info == {}
 
     @pytest.mark.asyncio
@@ -312,6 +314,6 @@ class TestCookieManager:
         manager.flaresolverr.get_cookies_for_domain = AsyncMock(
             side_effect=Exception("FlareSolverr error")
         )
-        
+
         with pytest.raises(Exception, match="Cookie extraction failed"):
             await manager._extract_cookies("https://example.com", "example.com")

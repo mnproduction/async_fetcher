@@ -7,20 +7,24 @@ Cloudflare-protected sites using FlareSolverr cookie extraction + aiohttp.
 
 import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-# Import simplified models
-from .models import (
-    SingleFetchRequest, BatchFetchRequest, FetchResult,
-    BatchFetchResponse, HealthResponse
-)
+# Import logger
+from settings.logger import get_logger
 
 # Import the simplified fetcher
 from toolkit.simple_fetcher import SimpleFetcher
 
-# Import logger
-from settings.logger import get_logger
+# Import simplified models
+from .models import (
+    BatchFetchRequest,
+    BatchFetchResponse,
+    FetchResult,
+    HealthResponse,
+    SingleFetchRequest,
+)
 
 # Initialize logger
 logger = get_logger("api.main")
@@ -88,7 +92,7 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # Add CORS middleware
@@ -104,6 +108,7 @@ app.add_middleware(
 # =============================================================================
 # API ENDPOINTS
 # =============================================================================
+
 
 @app.post("/fetch", response_model=FetchResult)
 async def fetch_single_url(request: SingleFetchRequest):
@@ -126,8 +131,7 @@ async def fetch_single_url(request: SingleFetchRequest):
 
     try:
         result = await fetcher.fetch_single(
-            url=request.url,
-            force_refresh_cookies=request.force_refresh_cookies
+            url=request.url, force_refresh_cookies=request.force_refresh_cookies
         )
 
         # Convert SimpleFetcher result to API model
@@ -140,12 +144,12 @@ async def fetch_single_url(request: SingleFetchRequest):
             execution_time=result.execution_time,
             error=result.error,
             used_cookies=result.used_cookies,
-            cookies_refreshed=result.cookies_refreshed
+            cookies_refreshed=result.cookies_refreshed,
         )
 
     except Exception as e:
         logger.error(f"Error fetching single URL {request.url}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
 
 
 @app.post("/fetch/batch", response_model=BatchFetchResponse)
@@ -171,7 +175,7 @@ async def fetch_multiple_urls(request: BatchFetchRequest):
         results = await fetcher.fetch_batch(
             urls=request.urls,
             max_concurrent=request.max_concurrent,
-            force_refresh_cookies=request.force_refresh_cookies
+            force_refresh_cookies=request.force_refresh_cookies,
         )
 
         # Convert results to API models
@@ -189,7 +193,7 @@ async def fetch_multiple_urls(request: BatchFetchRequest):
                 execution_time=result.execution_time,
                 error=result.error,
                 used_cookies=result.used_cookies,
-                cookies_refreshed=result.cookies_refreshed
+                cookies_refreshed=result.cookies_refreshed,
             )
             api_results.append(api_result)
 
@@ -202,12 +206,12 @@ async def fetch_multiple_urls(request: BatchFetchRequest):
             total_urls=len(request.urls),
             successful_urls=successful_count,
             failed_urls=len(request.urls) - successful_count,
-            total_execution_time=total_time
+            total_execution_time=total_time,
         )
 
     except Exception as e:
         logger.error(f"Error in batch fetch: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -231,7 +235,7 @@ async def health_check():
             flaresolverr_healthy=False,
             cached_domains=0,
             timestamp=0.0,
-            error="Fetcher service not initialized"
+            error="Fetcher service not initialized",
         )
 
     try:
@@ -245,7 +249,7 @@ async def health_check():
             cookie_sessions=health.get("cookie_sessions", {}),
             timestamp=health["timestamp"],
             issues=health.get("issues"),
-            error=health.get("error")
+            error=health.get("error"),
         )
 
     except Exception as e:
@@ -256,8 +260,9 @@ async def health_check():
             flaresolverr_healthy=False,
             cached_domains=0,
             timestamp=0.0,
-            error=str(e)
+            error=str(e),
         )
+
 
 @app.post("/cleanup", response_model=dict)
 async def cleanup_stale_cookies():
@@ -277,14 +282,11 @@ async def cleanup_stale_cookies():
         cleaned_count = await fetcher.cleanup_stale_cookies()
         logger.info(f"Cleaned up {cleaned_count} stale cookie sessions")
 
-        return {
-            "message": "Cleanup completed",
-            "sessions_cleaned": cleaned_count
-        }
+        return {"message": "Cleanup completed", "sessions_cleaned": cleaned_count}
 
     except Exception as e:
         logger.error(f"Error during cleanup: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}") from e
 
 
 @app.get("/cookies/info", response_model=dict)
@@ -303,15 +305,11 @@ async def get_cookie_info():
 
     try:
         cookie_info = await fetcher.get_cookie_info()
-        return {
-            "cached_domains": len(cookie_info),
-            "sessions": cookie_info
-        }
+        return {"cached_domains": len(cookie_info), "sessions": cookie_info}
 
     except Exception as e:
         logger.error(f"Error getting cookie info: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to get cookie info: {str(e)}")
-
+        raise HTTPException(status_code=500, detail=f"Failed to get cookie info: {str(e)}") from e
 
 
 @app.get("/")
@@ -332,13 +330,13 @@ async def root():
             "fetch_batch": "/fetch/batch",
             "cleanup": "/cleanup",
             "cookie_info": "/cookies/info",
-            "docs": "/docs"
+            "docs": "/docs",
         },
         "features": [
             "FlareSolverr integration for Cloudflare bypass",
             "Cookie caching with automatic refresh",
             "Fast HTTP requests with aiohttp",
             "Batch processing with concurrency control",
-            "Simple, focused API"
-        ]
+            "Simple, focused API",
+        ],
     }

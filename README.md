@@ -349,6 +349,78 @@ tail -f logs/app.log
 5. Run the test suite
 6. Submit a pull request
 
+## CI/CD Pipeline
+
+This project includes a comprehensive CI/CD pipeline using GitHub Actions.
+
+### Automated Workflows
+
+#### CI Pipeline (`.github/workflows/ci.yml`)
+Runs on every push and pull request to `main` and `develop` branches:
+
+- **Code Quality & Linting**: Uses Ruff for code formatting and linting
+- **Unit Tests**: Fast tests with mocked dependencies
+- **Integration Tests**: API endpoint tests with mocked FlareSolverr
+- **E2E Tests**: Full system tests with real FlareSolverr service
+- **Docker Build**: Validates Docker image builds
+- **Security Scan**: Checks for known vulnerabilities
+
+#### Deployment Pipeline (`.github/workflows/deploy.yml`)
+Triggered on releases or manual dispatch:
+
+- **Build & Push**: Creates Docker images for multiple architectures
+- **Deploy to Staging**: Manual deployment to staging environment
+- **Deploy to Production**: Automatic deployment on releases
+- **Notifications**: Success/failure notifications
+
+### Development Scripts
+
+Use the `scripts/dev.py` utility for common development tasks:
+
+```bash
+# Setup development environment
+python scripts/dev.py setup
+
+# Code formatting and linting
+python scripts/dev.py format
+python scripts/dev.py lint
+
+# Running tests
+python scripts/dev.py test          # All tests
+python scripts/dev.py test-unit     # Unit tests only
+python scripts/dev.py test-int      # Integration tests only
+python scripts/dev.py test-e2e      # E2E tests only
+python scripts/dev.py coverage      # Tests with coverage report
+
+# Cleanup
+python scripts/dev.py clean
+```
+
+### Test Categories
+
+Tests are organized with pytest markers:
+
+- `unit`: Fast, isolated tests with mocked dependencies
+- `integration`: API tests with mocked external services
+- `e2e`: Full system tests requiring real FlareSolverr
+- `slow`: Tests that take longer than 5 seconds
+- `network`: Tests requiring network access
+- `cloudflare`: Tests with real Cloudflare-protected sites
+
+### Code Quality Standards
+
+- **Linting**: Ruff with strict rules for code quality
+- **Formatting**: Consistent code style with Ruff formatter
+- **Type Hints**: Full type annotation coverage
+- **Test Coverage**: Minimum 75% coverage requirement
+- **Security**: Automated vulnerability scanning
+
+### Dependency Management
+
+- **Dependabot**: Automated dependency updates
+- **Security**: Regular security scans
+- **Pinned Versions**: Controlled dependency updates
+
 ## License
 
 [Add your license information here]

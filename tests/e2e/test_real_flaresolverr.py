@@ -14,8 +14,9 @@ Run with: pytest -m "e2e" --tb=short -v
 
 import pytest
 from fastapi.testclient import TestClient
+
 from api.main import app
-from toolkit.flaresolverr import FlareSolverrClient, FlareSolverrError, FlareSolverrConnectionError
+from toolkit.flaresolverr import FlareSolverrClient, FlareSolverrConnectionError, FlareSolverrError
 from toolkit.simple_fetcher import SimpleFetcher
 
 # Mark all tests in this file as e2e tests
@@ -23,6 +24,7 @@ pytestmark = [pytest.mark.e2e, pytest.mark.slow, pytest.mark.flaresolverr, pytes
 
 
 FLARESOLVERR_URL = "http://localhost:8191"
+
 
 class TestFlareSolverrE2E:
     """End-to-end tests for FlareSolverr integration."""
@@ -46,14 +48,14 @@ class TestFlareSolverrE2E:
         """Test solving a simple challenge with FlareSolverr."""
         try:
             solution = await flaresolverr_client.solve_challenge(
-                "https://httpbin.org/headers",
-                timeout=30000
+                "https://httpbin.org/headers", timeout=30000
             )
             assert solution["status"] == 200
             assert solution["url"] == "https://httpbin.org/headers"
             assert "userAgent" in solution
         except FlareSolverrError as e:
             pytest.skip(f"FlareSolverr challenge failed: {e}")
+
 
 class TestSimpleFetcherE2E:
     """End-to-end tests for the complete fetcher system."""
@@ -111,10 +113,10 @@ class TestAPIEndpointsE2E:
     def test_single_fetch_endpoint_real_cloudflare(self, test_client):
         """Test single fetch endpoint with real Cloudflare-protected site."""
         response = test_client.post("/fetch", json={"url": "https://tem.fi"})
-        
+
         if response.status_code != 200:
-             pytest.skip(f"API request failed with status {response.status_code}: {response.text}")
-             
+            pytest.skip(f"API request failed with status {response.status_code}: {response.text}")
+
         data = response.json()
         assert data["success"] is True
         assert "tem.fi" in data["url"]

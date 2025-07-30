@@ -91,13 +91,15 @@ dependencies = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "python-dotenv" },
-    { name = "ruff" },
     { name = "structlog" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "uvloop", marker = "sys_platform != 'win32'" },
 ]
 
 [package.optional-dependencies]
+linters = [
+    { name = "ruff" },
+]
 test = [
     { name = "freezegun" },
     { name = "pytest-cov" },
@@ -119,12 +121,12 @@ requires-dist = [
     { name = "pytest-asyncio", specifier = ">=1.1.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=6.0.0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
-    { name = "ruff", specifier = ">=0.12.4" },
+    { name = "ruff", marker = "extra == 'linters'", specifier = ">=0.12.4" },
     { name = "structlog", specifier = ">=25.4.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.35.0" },
     { name = "uvloop", marker = "sys_platform != 'win32'", specifier = ">=0.20.0" },
 ]
-provides-extras = ["test"]
+provides-extras = ["test", "linters"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "freezegun", specifier = ">=1.5.3" }]
