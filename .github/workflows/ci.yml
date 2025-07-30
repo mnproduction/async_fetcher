@@ -151,9 +151,9 @@ jobs:
 
       - name: Test Docker image
         run: |
-          # Load the image from buildx cache
-          docker buildx build --load --tag async-fetcher:test .
-          docker run --rm async-fetcher:test python -c "import api.main; print('Docker build successful')"
+           # Load the image from buildx cache
+           docker buildx build --load --tag async-fetcher:test .
+           docker run --rm async-fetcher:test uv run python -c "import api.main; print('Docker build successful')"
 
   security:
     name: Security Scan
