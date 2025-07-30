@@ -49,10 +49,10 @@ jobs:
         ports:
           - 8191:8191
         options: >-
-          --health-cmd "curl -f http://localhost:8191/v1 || exit 1"
-          --health-interval 30s
-          --health-timeout 10s
-          --health-retries 5
+          --health-cmd "curl -f http://127.0.0.1:8191/v1 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Checkout code
@@ -107,10 +107,10 @@ jobs:
         ports:
           - 8191:8191
         options: >-
-          --health-cmd "curl -f http://localhost:8191/v1 || exit 1"
-          --health-interval 30s
-          --health-timeout 10s
-          --health-retries 5
+          --health-cmd "curl -f http://127.0.0.1:8191/v1 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Checkout code
